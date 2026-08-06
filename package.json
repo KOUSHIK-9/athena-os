@@ -1,0 +1,48 @@
+{
+  "name": "athena-os",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "An intelligent operating system layer for iOS",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "build:packages": "turbo build --filter=@athena-os/*",
+    "test": "turbo test",
+    "test:unit": "turbo test --filter=@athena-os/*",
+    "lint": "turbo lint",
+    "lint:fix": "turbo lint:fix",
+    "format": "turbo format",
+    "format:check": "turbo format:check",
+    "typecheck": "turbo typecheck",
+    "clean": "turbo clean && rm -rf node_modules .turbo",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "pnpm build && changeset publish",
+    "prepare": "husky install"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.27.0",
+    "@types/node": "catalog:",
+    "@typescript-eslint/parser": "catalog:",
+    "@typescript-eslint/eslint-plugin": "catalog:",
+    "@eslint/js": "catalog:",
+    "eslint": "catalog:",
+    "husky": "^9.0.0",
+    "prettier": "catalog:",
+    "prettier-plugin-packagejson": "^2.5.0",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "turbo": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "packageManager": "pnpm@9.6.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Athena-OS/athena-os.git"
+  },
+  "license": "MIT"
+}

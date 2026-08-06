@@ -1,0 +1,87 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+build/
+dist/
+*.tsbuildinfo
+
+# Cache
+.cache/
+.turbo/
+.esbuild/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+._*
+**/._*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Recordings and media (large files)
+recordings/
+iphone-screenshots/
+videos/
+screenshots/
+*.mov
+*.mp4
+*.mkv
+*.avi
+
+# Datasets
+datasets/
+*.csv
+*.jsonl
+*.parquet
+
+# Docker
+docker-compose.override.yml
+
+# Temporary
+tmp/
+temp/
+*.tmp
+
+# Build artifacts
+*.dSYM/
+*.xcvuetify
+
+# Appium / WebDriverAgent
+WebDriverAgent/
+*.app
+*.ipa
+
+# Models
+models/
+*.gguf
+*.bin
+*.safetensors
+
+# OS specifics
+.Spotlight-V100
+.TemporaryItems
+.Trashes
