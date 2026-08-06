@@ -4,14 +4,14 @@
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
+      "import": "./dist/index.js",
       "require": "./dist/index.js"
-    }
+    },
+    "./bin": "./dist/bin.js"
   },
   "scripts": {
     "build": "tsc && tsc -p tsconfig.build.json",

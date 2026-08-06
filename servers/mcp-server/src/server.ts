@@ -17,6 +17,7 @@ import {
   TerminateAppParamsSchema,
   WaitParamsSchema,
 } from './tools.js';
+import { verifyWDA } from '@athena-os/iphone-agent';
 
 const logger = createLogger('MCPServer');
 
@@ -35,6 +36,11 @@ const server = new Server(
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
+    {
+      name: 'doctor',
+      description: 'Check environment readiness: Xcode, signing identity, WebDriverAgent',
+      inputSchema: { type: 'object', properties: {} },
+    },
     {
       name: 'connect',
       description: 'Connect to an iOS device and create a session',
@@ -185,6 +191,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   try {
     switch (name) {
+      case 'doctor': {
+        const status = await verifyWDA();
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ success: true, ...status }, null, 2) }],
+        };
+      }
+
       case 'connect': {
         const params = ConnectParamsSchema.parse(args);
         const result = await mcpSessionManager.connect({

@@ -117,21 +117,12 @@ importers:
 
   apps/cli:
     dependencies:
-      '@athena-os/executor':
-        specifier: workspace:*
-        version: link:../../packages/executor
-      '@athena-os/iphone-agent':
-        specifier: workspace:*
-        version: link:../../agents/iphone-agent
       '@athena-os/mcp-server':
         specifier: workspace:*
         version: link:../../servers/mcp-server
-      '@athena-os/sdk':
-        specifier: workspace:*
-        version: link:../../packages/sdk
-      '@athena-os/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.0.0
+        version: 1.30.0(zod@3.25.76)
       chalk:
         specifier: ^5.3.0
         version: 5.6.2

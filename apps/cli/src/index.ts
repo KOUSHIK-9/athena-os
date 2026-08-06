@@ -1,8 +1,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
-import { iPhoneExecutor, verifyWDA, selectDevice } from '@athena-os/iphone-agent';
-import type { SessionConfig } from '@athena-os/executor';
+import { getMCPClient, type MCPToolResult } from './mcpClient.js';
 
 const program = new Command();
 
@@ -17,6 +16,25 @@ program
     }
   });
 
+async function withClient<T>(
+  label: string,
+  fn: (client: Awaited<ReturnType<typeof getMCPClient>>) => Promise<T>
+): Promise<T> {
+  const client = await getMCPClient();
+  try {
+    return await fn(client);
+  } finally {
+    await client.close();
+  }
+}
+
+interface DoctorStatus extends MCPToolResult {
+  xcodeInstalled?: boolean;
+  xcodeVersion?: string;
+  signingIdentity?: string;
+  wdaRunnerInstalled?: boolean;
+}
+
 program
   .command('doctor')
   .description('Verify Xcode, Developer Mode, and WebDriverAgent setup')
@@ -24,7 +42,9 @@ program
     const spinner = ora('Checking environment...').start();
 
     try {
-      const status = await verifyWDA();
+      const status = (await withClient('doctor', (client) =>
+        client.callTool('doctor')
+      )) as DoctorStatus;
 
       spinner.stop();
 
@@ -51,9 +71,6 @@ program
         console.log(chalk.yellow('  ⚠ Not verified (will build on first connect)'));
       }
 
-      console.log(chalk.cyan('\nDevices:'));
-      // Device discovery would go here
-
       console.log(chalk.bold('\n'));
       process.exit(status.xcodeInstalled ? 0 : 1);
     } catch (error) {
@@ -72,30 +89,27 @@ program
     const spinner = ora('Connecting to device...').start();
 
     try {
-      const device = await selectDevice(options.udid, { requireDeveloperMode: true });
-      spinner.text = `Found device: ${device.name} (${device.udid})`;
+      const result = await withClient('connect', (client) =>
+        client.callTool('connect', {
+          udid: options.udid,
+          bundleId: options.bundleId,
+        })
+      );
 
-      const config: SessionConfig = {
-        deviceUdid: device.udid,
-        bundleId: options.bundleId,
-        timeout: 30000,
-        retries: 3,
-        screenshotOnFailure: true,
-      };
-
-      const executor = new iPhoneExecutor();
-      await executor.initialize(config);
+      if (!result.success) {
+        throw new Error(result.error ?? 'Connection failed');
+      }
 
       if (options.bundleId) {
         spinner.text = `Launching ${options.bundleId}...`;
-        await executor.execute({
-          type: 'launchApp',
-          bundleId: options.bundleId,
-          description: `Launch ${options.bundleId}`,
-        });
+        const client = await getMCPClient();
+        await client.callTool('launchApp', { bundleId: options.bundleId });
+        await client.close();
       }
 
-      spinner.succeed(chalk.green(`Connected to ${device.name} (${device.udid})`));
+      spinner.succeed(
+        chalk.green(`Connected to ${result.deviceUdid ?? 'device'} (${result.deviceUdid})`)
+      );
       console.log(chalk.gray('\nSession ready. Use other commands to interact with the device.'));
       console.log(chalk.gray("Run 'athena disconnect' to end the session.\n"));
     } catch (error) {
@@ -113,8 +127,7 @@ program
     const spinner = ora('Taking screenshot...').start();
 
     try {
-      const executor = await getExecutor();
-      const result = await executor.execute({ type: 'screenshot', description: 'Take screenshot' });
+      const result = await withClient('screenshot', (client) => client.callTool('screenshot'));
 
       if (!result.success) {
         throw new Error(result.error ?? 'Screenshot failed');
@@ -145,12 +158,11 @@ program
     const spinner = ora(`Tapping "${selector}"...`).start();
 
     try {
-      const executor = await getExecutor();
-      const result = await executor.execute({
-        type: 'tap',
-        selector: { type: 'accessibilityId', value: selector },
-        description: `Tap ${selector}`,
-      });
+      const result = await withClient('tap', (client) =>
+        client.callTool('tap', {
+          selector: { type: 'accessibilityId', value: selector },
+        })
+      );
 
       if (result.success) {
         spinner.succeed(chalk.green(`Tapped "${selector}"`));
@@ -171,21 +183,17 @@ program
     '-s, --selector <selector>',
     'Element selector (optional, uses focused element if not provided)'
   )
-  .action(async (text, cmd) => {
+  .action(async (text: string, cmd: { opts: () => { selector?: string } }) => {
     const spinner = ora(`Typing "${text}"...`).start();
 
     try {
-      const executor = await getExecutor();
       const selector = cmd.opts().selector
         ? { type: 'accessibilityId' as const, value: cmd.opts().selector }
         : undefined;
 
-      const result = await executor.execute({
-        type: 'type',
-        text,
-        selector,
-        description: `Type: ${text}`,
-      });
+      const result = await withClient('type', (client) =>
+        client.callTool('type', { text, selector })
+      );
 
       if (result.success) {
         spinner.succeed(chalk.green(`Typed "${text}"`));
@@ -202,16 +210,13 @@ program
 program
   .command('launch <bundleId>')
   .description('Launch an app by bundle ID')
-  .action(async (bundleId) => {
+  .action(async (bundleId: string) => {
     const spinner = ora(`Launching ${bundleId}...`).start();
 
     try {
-      const executor = await getExecutor();
-      const result = await executor.execute({
-        type: 'launchApp',
-        bundleId,
-        description: `Launch ${bundleId}`,
-      });
+      const result = await withClient('launch', (client) =>
+        client.callTool('launchApp', { bundleId })
+      );
 
       if (result.success) {
         spinner.succeed(chalk.green(`Launched ${bundleId}`));
@@ -232,11 +237,7 @@ program
     const spinner = ora('Pressing home button...').start();
 
     try {
-      const executor = await getExecutor();
-      const result = await executor.execute({
-        type: 'pressHome',
-        description: 'Press home button',
-      });
+      const result = await withClient('home', (client) => client.callTool('pressHome'));
 
       if (result.success) {
         spinner.succeed(chalk.green('Home button pressed'));
@@ -257,11 +258,7 @@ program
     const spinner = ora('Getting accessibility tree...').start();
 
     try {
-      const executor = await getExecutor();
-      const result = await executor.execute({
-        type: 'getTree',
-        description: 'Get accessibility tree',
-      });
+      const result = await withClient('tree', (client) => client.callTool('getTree'));
 
       spinner.stop();
 
@@ -284,22 +281,19 @@ program
     const spinner = ora('Disconnecting...').start();
 
     try {
-      const { mcpSessionManager } = await import('@athena-os/mcp-server');
-      await mcpSessionManager.disconnectAll();
-      spinner.succeed(chalk.green('Disconnected'));
+      const result = await withClient('disconnect', (client) => client.callTool('disconnect'));
+
+      if (result.success) {
+        spinner.succeed(chalk.green('Disconnected'));
+      } else {
+        throw new Error(result.error ?? 'Disconnect failed');
+      }
     } catch (error) {
       spinner.fail('Disconnect failed');
       console.error(chalk.red(error instanceof Error ? error.message : String(error)));
       process.exit(1);
     }
   });
-
-async function getExecutor(): Promise<iPhoneExecutor> {
-  // For CLI, we'll use the MCP server approach
-  // This is a simplified version - in reality, we'd connect to the MCP server
-  const { mcpSessionManager } = await import('@athena-os/mcp-server');
-  return mcpSessionManager.getExecutor();
-}
 
 program.parseAsync(process.argv).catch((error) => {
   console.error(chalk.red(error.message));
