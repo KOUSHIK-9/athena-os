@@ -1,4 +1,5 @@
 import { iPhoneExecutor } from '@athena-os/iphone-agent';
+import { selectDevice } from '@athena-os/iphone-agent';
 import type { SessionConfig } from '@athena-os/core';
 import { createLogger } from '@athena-os/shared';
 
@@ -16,7 +17,13 @@ export class MCPSessionManager {
   private currentSessionId: string | null = null;
 
   async connect(config: SessionConfig): Promise<{ sessionId: string; deviceUdid: string }> {
-    const udid = config.deviceUdid;
+    let udid = config.deviceUdid;
+
+    if (!udid) {
+      const device = await selectDevice(undefined, { requireDeveloperMode: true });
+      udid = device.udid;
+      config = { ...config, deviceUdid: udid };
+    }
 
     if (this.sessions.has(udid)) {
       const existing = this.sessions.get(udid)!;

@@ -38,8 +38,17 @@ export class AppiumDriver implements Driver {
     }
 
     if (typeof remote !== 'function') {
+      try {
+        const wdioModule = await import('webdriverio');
+        remote = (wdioModule as Record<string, unknown>).remote;
+      } catch {
+        // fall through - remote stays undefined
+      }
+    }
+
+    if (typeof remote !== 'function') {
       throw new AppiumDriverError(
-        "Appium client not found. Ensure the 'appium' package is installed with a driver.",
+        "Appium client not found. Ensure the 'appium'/'webdriverio' package is installed with a driver.",
         'createSession'
       );
     }

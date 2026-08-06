@@ -19,6 +19,7 @@ import {
 } from './tools.js';
 import { verifyWDA } from '@athena-os/iphone-agent';
 import { discoverDevices } from '@athena-os/iphone-agent';
+import { resolveAppNameToBundleId } from '@athena-os/iphone-agent';
 
 const logger = createLogger('MCPServer');
 
@@ -63,13 +64,13 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
     {
       name: 'launchApp',
-      description: 'Launch an app on the connected device',
+      description: 'Launch an app on the connected device (by name or bundle ID)',
       inputSchema: {
         type: 'object',
         properties: {
+          app: { type: 'string', description: 'App name (e.g. Settings) or bundle ID' },
           bundleId: { type: 'string', description: 'Bundle identifier of the app to launch' },
         },
-        required: ['bundleId'],
       },
     },
     {
@@ -198,22 +199,41 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     switch (name) {
       case 'doctor': {
+        const t0 = Date.now();
         const status = await verifyWDA();
+        const t1 = Date.now();
         const devices = await discoverDevices();
+        const t2 = Date.now();
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify({ success: true, ...status, devices }, null, 2),
+              text: JSON.stringify(
+                {
+                  success: true,
+                  ...status,
+                  devices,
+                  timings: { xcodeWdaMs: t1 - t0, devicesMs: t2 - t1, totalMs: t2 - t0 },
+                },
+                null,
+                2
+              ),
             },
           ],
         };
       }
 
       case 'devices': {
+        const t0 = Date.now();
         const devices = await discoverDevices();
+        const ms = Date.now() - t0;
         return {
-          content: [{ type: 'text', text: JSON.stringify({ success: true, devices }, null, 2) }],
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ success: true, devices, timings: { devicesMs: ms } }, null, 2),
+            },
+          ],
         };
       }
 
@@ -234,13 +254,23 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'launchApp': {
         const params = LaunchAppParamsSchema.parse(args);
         const executor = mcpSessionManager.getExecutor();
+        const target = params.bundleId ?? params.app;
+        if (!target) {
+          throw new Error('launchApp requires an app name or bundleId');
+        }
+        const bundleId = await resolveAppNameToBundleId(target, executor.getSession().deviceUdid);
         const result = await executor.execute({
           type: 'launchApp',
-          bundleId: params.bundleId,
-          description: `Launch ${params.bundleId}`,
+          bundleId,
+          description: `Launch ${target}`,
         });
         return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ ...result, bundleId, resolvedFrom: target }, null, 2),
+            },
+          ],
         };
       }
 

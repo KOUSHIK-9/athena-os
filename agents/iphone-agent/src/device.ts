@@ -11,10 +11,15 @@ export interface ConnectedDevice extends DeviceInfo {
   isAvailable: boolean;
 }
 
-export async function discoverDevices(): Promise<ConnectedDevice[]> {
-  logger.debug('Discovering connected iOS devices');
+export interface DeviceDiscovery {
+  readonly name: string;
+  discover(): Promise<ConnectedDevice[]>;
+}
 
-  try {
+class DevicectlDiscovery implements DeviceDiscovery {
+  readonly name = 'devicectl';
+
+  async discover(): Promise<ConnectedDevice[]> {
     const { stdout } = await execFileAsync('xcrun', [
       'devicectl',
       'list',
@@ -44,30 +49,82 @@ export async function discoverDevices(): Promise<ConnectedDevice[]> {
       });
     }
 
-    logger.info({ count: devices.length }, 'Discovered iOS devices');
+    logger.info({ count: devices.length }, 'devicectl discovered iOS devices');
     return devices;
-  } catch (error) {
-    logger.warn({ error }, 'Failed to discover devices via devicectl, falling back to idevice_id');
-
-    try {
-      const { stdout } = await execFileAsync('idevice_id', ['-l']);
-      const udids = stdout.trim().split('\n').filter(Boolean);
-
-      const devices: ConnectedDevice[] = [];
-      for (const udid of udids) {
-        const info = await getDeviceInfo(udid);
-        devices.push({ ...info, isAvailable: true });
-      }
-
-      return devices;
-    } catch (fallbackError) {
-      logger.error({ error: fallbackError }, 'Failed to discover devices');
-      return [];
-    }
   }
 }
 
+class LibIMobileDeviceDiscovery implements DeviceDiscovery {
+  readonly name = 'libimobiledevice';
+
+  async discover(): Promise<ConnectedDevice[]> {
+    const { stdout } = await execFileAsync('idevice_id', ['-l']);
+    const udids = stdout.trim().split('\n').filter(Boolean);
+
+    const devices: ConnectedDevice[] = [];
+    for (const udid of udids) {
+      try {
+        const info = await getDeviceInfo(udid);
+        devices.push({ ...info, isAvailable: true });
+      } catch (error) {
+        logger.warn({ udid, error }, 'libimobiledevice could not read device info');
+      }
+    }
+
+    logger.info({ count: devices.length }, 'libimobiledevice discovered iOS devices');
+    return devices;
+  }
+}
+
+export const devicectlDiscovery = new DevicectlDiscovery();
+export const libIMobileDiscovery = new LibIMobileDeviceDiscovery();
+
+export async function discoverDevices(): Promise<ConnectedDevice[]> {
+  logger.debug('Discovering connected iOS devices');
+
+  const providers: DeviceDiscovery[] = [devicectlDiscovery, libIMobileDiscovery];
+
+  for (const provider of providers) {
+    try {
+      return await provider.discover();
+    } catch (error) {
+      logger.warn({ provider: provider.name, error }, 'device discovery failed, trying next');
+    }
+  }
+
+  return [];
+}
+
 export async function getDeviceInfo(udid: string): Promise<DeviceInfo> {
+  try {
+    const { stdout } = await execFileAsync('xcrun', [
+      'devicectl',
+      'list',
+      'devices',
+      '--json-output',
+      '-',
+    ]);
+    const data = JSON.parse(stdout);
+    const device = (data.result?.devices ?? []).find(
+      (d: Record<string, unknown>) => d.identifier === udid
+    );
+
+    if (device) {
+      const props = device.deviceProperties ?? {};
+      const hw = device.hardwareProperties ?? {};
+      return {
+        udid,
+        name: props.name ?? hw.marketingName ?? 'Unknown',
+        model: hw.productType ?? hw.marketingName ?? 'Unknown',
+        osVersion: props.osVersionNumber ?? 'Unknown',
+        isSimulator: hw.deviceType === 'simulator',
+        developerMode: props.developerModeStatus === 'enabled',
+      };
+    }
+  } catch (error) {
+    logger.warn({ udid, error }, 'devicectl device info failed, falling back to ideviceinfo');
+  }
+
   try {
     const { stdout } = await execFileAsync('ideviceinfo', [
       '-u',

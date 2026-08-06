@@ -7,7 +7,8 @@ export const ConnectParamsSchema = z.object({
 });
 
 export const LaunchAppParamsSchema = z.object({
-  bundleId: z.string(),
+  app: z.string().optional(),
+  bundleId: z.string().optional(),
 });
 
 export const TapParamsSchema = z.object({

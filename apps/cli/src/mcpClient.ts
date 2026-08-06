@@ -11,6 +11,7 @@ export interface MCPToolResult {
   deviceUdid?: string;
   screenshot?: string;
   metadata?: Record<string, unknown>;
+  timings?: Record<string, number>;
   [key: string]: unknown;
 }
 
