@@ -18,6 +18,7 @@ import {
   WaitParamsSchema,
 } from './tools.js';
 import { verifyWDA } from '@athena-os/iphone-agent';
+import { discoverDevices } from '@athena-os/iphone-agent';
 
 const logger = createLogger('MCPServer');
 
@@ -38,7 +39,12 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
     {
       name: 'doctor',
-      description: 'Check environment readiness: Xcode, signing identity, WebDriverAgent',
+      description: 'Check environment readiness: Xcode, signing identity, WebDriverAgent, devices',
+      inputSchema: { type: 'object', properties: {} },
+    },
+    {
+      name: 'devices',
+      description: 'List connected iOS devices',
       inputSchema: { type: 'object', properties: {} },
     },
     {
@@ -193,8 +199,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     switch (name) {
       case 'doctor': {
         const status = await verifyWDA();
+        const devices = await discoverDevices();
         return {
-          content: [{ type: 'text', text: JSON.stringify({ success: true, ...status }, null, 2) }],
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ success: true, ...status, devices }, null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'devices': {
+        const devices = await discoverDevices();
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ success: true, devices }, null, 2) }],
         };
       }
 

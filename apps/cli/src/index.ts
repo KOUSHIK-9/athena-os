@@ -33,6 +33,7 @@ interface DoctorStatus extends MCPToolResult {
   xcodeVersion?: string;
   signingIdentity?: string;
   wdaRunnerInstalled?: boolean;
+  devices?: DeviceEntry[];
 }
 
 program
@@ -71,10 +72,84 @@ program
         console.log(chalk.yellow('  ⚠ Not verified (will build on first connect)'));
       }
 
+      console.log(chalk.cyan('\nDevices:'));
+      const devices = status.devices ?? [];
+      if (devices.length === 0) {
+        console.log(chalk.yellow('  ⚠ No devices found'));
+      } else {
+        for (const device of devices) {
+          const mark = device.isAvailable ? chalk.green('✓') : chalk.red('✗');
+          console.log(
+            `  ${mark} ${chalk.bold(device.name)} (${device.osVersion ?? 'unknown iOS'})` +
+              `${device.isAvailable ? '' : chalk.gray(' — unavailable')}`
+          );
+        }
+      }
+
       console.log(chalk.bold('\n'));
       process.exit(status.xcodeInstalled ? 0 : 1);
     } catch (error) {
       spinner.fail('Environment check failed');
+      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+      process.exit(1);
+    }
+  });
+
+interface DeviceEntry {
+  udid: string;
+  name: string;
+  model?: string;
+  osVersion?: string;
+  isSimulator?: boolean;
+  developerMode?: boolean;
+  isAvailable?: boolean;
+}
+
+program
+  .command('devices')
+  .description('List connected iOS devices')
+  .action(async () => {
+    const spinner = ora('Discovering devices...').start();
+
+    try {
+      const result = await withClient('devices', (client) => client.callTool('devices'));
+
+      spinner.stop();
+
+      if (!result.success || !Array.isArray(result.devices)) {
+        console.error(chalk.red(result.error ?? 'Failed to discover devices'));
+        process.exit(1);
+      }
+
+      const devices = result.devices as DeviceEntry[];
+
+      console.log(chalk.bold('\n📱 Connected Devices\n'));
+
+      if (devices.length === 0) {
+        console.log(
+          chalk.yellow('  No iOS devices found. Connect a device and enable Developer Mode.')
+        );
+        console.log(chalk.bold('\n'));
+        process.exit(0);
+      }
+
+      for (const device of devices) {
+        const status = device.isAvailable ? chalk.green('✓') : chalk.red('✗');
+        const devMode = device.developerMode ? chalk.green('Enabled') : chalk.yellow('Disabled');
+        console.log(`  ${status} ${chalk.bold(device.name)}`);
+        console.log(`    UDID:          ${device.udid}`);
+        console.log(`    Model:         ${device.model ?? 'Unknown'}`);
+        console.log(`    iOS Version:    ${device.osVersion ?? 'Unknown'}`);
+        console.log(`    Developer Mode: ${devMode}`);
+        console.log(
+          `    Status:        ${device.isAvailable ? chalk.green('Available') : chalk.red('Unavailable')}`
+        );
+        console.log('');
+      }
+
+      process.exit(0);
+    } catch (error) {
+      spinner.fail('Device discovery failed');
       console.error(chalk.red(error instanceof Error ? error.message : String(error)));
       process.exit(1);
     }

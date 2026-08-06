@@ -15,23 +15,33 @@ export async function discoverDevices(): Promise<ConnectedDevice[]> {
   logger.debug('Discovering connected iOS devices');
 
   try {
-    const { stdout } = await execFileAsync('xcrun', ['devicectl', 'list', 'devices', '--json']);
+    const { stdout } = await execFileAsync('xcrun', [
+      'devicectl',
+      'list',
+      'devices',
+      '--json-output',
+      '-',
+    ]);
     const data = JSON.parse(stdout);
 
     const devices: ConnectedDevice[] = [];
 
-    for (const device of data.devices ?? []) {
-      if (device.platform === 'iOS' || device.platform === 'iPadOS') {
-        devices.push({
-          udid: device.udid,
-          name: device.name,
-          model: device.modelName ?? device.model ?? 'Unknown',
-          osVersion: device.osVersion ?? 'Unknown',
-          isSimulator: device.isSimulator ?? false,
-          developerMode: device.developerModeEnabled ?? false,
-          isAvailable: device.isAvailable ?? true,
-        });
-      }
+    for (const device of data.result?.devices ?? []) {
+      const props = device.deviceProperties ?? {};
+      const hw = device.hardwareProperties ?? {};
+      const conn = device.connectionProperties ?? {};
+
+      if (hw.platform !== 'iOS' && hw.platform !== 'iPadOS') continue;
+
+      devices.push({
+        udid: device.identifier ?? hw.udid,
+        name: props.name ?? hw.marketingName ?? 'Unknown',
+        model: hw.productType ?? hw.marketingName ?? 'Unknown',
+        osVersion: props.osVersionNumber ?? 'Unknown',
+        isSimulator: hw.deviceType === 'simulator',
+        developerMode: props.developerModeStatus === 'enabled',
+        isAvailable: conn.tunnelState !== 'unavailable',
+      });
     }
 
     logger.info({ count: devices.length }, 'Discovered iOS devices');
@@ -93,13 +103,16 @@ export async function checkDeveloperMode(udid: string): Promise<boolean> {
   try {
     const { stdout } = await execFileAsync('xcrun', [
       'devicectl',
-      'device',
-      'info',
-      udid,
-      '--json',
+      'list',
+      'devices',
+      '--json-output',
+      '-',
     ]);
     const data = JSON.parse(stdout);
-    return data.developerModeEnabled ?? false;
+    const device = (data.result?.devices ?? []).find(
+      (d: Record<string, unknown>) => d.identifier === udid
+    );
+    return device?.deviceProperties?.developerModeStatus === 'enabled';
   } catch {
     return false;
   }
