@@ -10,6 +10,7 @@ interface ManagedSession {
   deviceInfo: DeviceInfo;
   lastActivity: Date;
   healthCheckInterval?: ReturnType<typeof setInterval>;
+  config: SessionConfig;
 }
 
 export class SessionManager {
@@ -57,7 +58,13 @@ export class SessionManager {
       developerMode: true,
     };
 
-    const managed: ManagedSession = { driver, session, deviceInfo, lastActivity: new Date() };
+    const managed: ManagedSession = {
+      driver,
+      session,
+      deviceInfo,
+      lastActivity: new Date(),
+      config,
+    };
 
     // Start health check
     managed.healthCheckInterval = setInterval(async () => {
@@ -136,13 +143,16 @@ export class SessionManager {
       // Ignore close failure during reconnect
     }
 
-    // Try to recreate session with same config
     try {
-      // We'd need to store the original config for reconnection
-      // For now, just remove the session
-      this.sessions.delete(udid);
+      const recreated = await this.createSession(managed.config);
+      this.sessions.set(udid, recreated);
+      logger.info({ udid }, 'Session recreated after reconnect');
     } catch (error) {
       logger.error({ udid, error }, 'Failed to reconnect session');
+      this.sessions.delete(udid);
+      if (managed.healthCheckInterval) {
+        clearInterval(managed.healthCheckInterval);
+      }
     }
   }
 

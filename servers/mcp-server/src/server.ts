@@ -245,6 +245,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           timeout: 30000,
           retries: 3,
           screenshotOnFailure: true,
+          verifyAppState: false,
         });
         return {
           content: [{ type: 'text', text: JSON.stringify({ success: true, ...result }, null, 2) }],
