@@ -1,23 +1,12 @@
-import type { Selector, DeviceInfo, SessionConfig } from '@athena-os/executor';
+import type {
+  Selector,
+  DeviceInfo,
+  SessionConfig,
+  UITree,
+  DriverCapabilities,
+} from '@athena-os/core';
 
-export interface UITree {
-  type: string;
-  name?: string;
-  label?: string;
-  value?: string;
-  rect?: { x: number; y: number; width: number; height: number };
-  children?: UITree[];
-  attributes?: Record<string, string | number | boolean>;
-}
-
-export interface DriverCapabilities {
-  platformName: string;
-  platformVersion: string;
-  deviceName: string;
-  udid: string;
-  bundleId?: string;
-  [key: string]: unknown;
-}
+export type { UITree, DriverCapabilities } from '@athena-os/core';
 
 export interface Driver {
   createSession(config: SessionConfig): Promise<DriverCapabilities>;

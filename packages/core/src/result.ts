@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { Action } from './Action.js';
+import type { Action } from './action.js';
 
 export const ResultSchema = z.object({
   success: z.boolean(),

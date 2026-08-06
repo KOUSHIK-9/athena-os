@@ -1,4 +1,4 @@
-import type { SessionConfig, Session, DeviceInfo } from '@athena-os/executor';
+import type { SessionConfig, Session, DeviceInfo } from '@athena-os/core';
 import { AppiumDriver, type Driver } from '@athena-os/driver';
 import { SessionError, SessionExpiredError, createLogger } from '@athena-os/shared';
 

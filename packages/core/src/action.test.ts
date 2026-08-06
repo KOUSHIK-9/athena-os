@@ -11,8 +11,8 @@ import {
   createSwipeAction,
   createWaitAction,
   createBackAction,
-} from './Action.js';
-import { SelectorSchema } from './types.js';
+} from './action.js';
+import { SelectorSchema } from './selector.js';
 
 describe('Action factory functions', () => {
   it('createLaunchAppAction produces a valid launchApp action', () => {

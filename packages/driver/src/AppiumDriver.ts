@@ -1,4 +1,4 @@
-import type { SessionConfig, DeviceInfo, Selector } from '@athena-os/executor';
+import type { SessionConfig, DeviceInfo, Selector } from '@athena-os/core';
 import type { Driver, UITree, DriverCapabilities } from './Driver.js';
 import { resolveSelector, createFallbackSelectors } from './selectors.js';
 import { AppiumDriverError, AppiumSessionError, AppiumElementNotFoundError } from './errors.js';

@@ -26,10 +26,10 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@athena-os/executor": "workspace:*",
     "@athena-os/shared": "workspace:*",
     "appium": "^2.0.0",
-    "plist": "^3.1.0"
+    "plist": "^3.1.0",
+    "@athena-os/core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "catalog:",

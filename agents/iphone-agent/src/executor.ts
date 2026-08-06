@@ -1,12 +1,5 @@
-import {
-  type Executor,
-  type Action,
-  type Result,
-  type Session,
-  type SessionConfig,
-  createSuccessResult,
-  createErrorResult,
-} from '@athena-os/executor';
+import { type Executor, type Session, type SessionConfig } from '@athena-os/executor';
+import { type Action, type Result, createSuccessResult, createErrorResult } from '@athena-os/core';
 import { sessionManager } from './session.js';
 import { selectDevice, verifyDeviceReady } from './device.js';
 import { verifyWDA } from './wda.js';

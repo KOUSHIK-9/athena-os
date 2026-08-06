@@ -27,7 +27,8 @@
   },
   "dependencies": {
     "@athena-os/executor": "workspace:*",
-    "@athena-os/shared": "workspace:*"
+    "@athena-os/shared": "workspace:*",
+    "@athena-os/core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "catalog:",

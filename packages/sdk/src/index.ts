@@ -1,12 +1,19 @@
+export type { Executor } from '@athena-os/executor';
+
 export type {
-  Executor,
   Action,
   Result,
   Selector,
   DeviceInfo,
   Session,
   SessionConfig,
-} from '@athena-os/executor';
+  UITree,
+  ScreenState,
+  Screenshot,
+  DriverCapabilities,
+  AthenaEvent,
+  AthenaEventType,
+} from '@athena-os/core';
 
 export {
   createLaunchAppAction,
@@ -21,7 +28,7 @@ export {
   createBackAction,
   createSuccessResult,
   createErrorResult,
-} from '@athena-os/executor';
+} from '@athena-os/core';
 
 export type {
   AthenaError,
@@ -38,8 +45,8 @@ export type {
   ValidationError,
   DriverError,
   WebDriverAgentError,
-} from '@athena-os/shared';
+} from '@athena-os/core';
 
-export { isAthenaError, toAthenaError } from '@athena-os/shared';
+export { isAthenaError, toAthenaError } from '@athena-os/core';
 
 export { loadConfig, getConfig, resetConfig, type Config } from '@athena-os/shared';

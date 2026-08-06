@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import type { Selector } from './types.js';
-import { SelectorSchema } from './types.js';
+import type { Selector } from './selector.js';
+import { SelectorSchema } from './selector.js';
 
 export const ActionSchema = z.discriminatedUnion('type', [
   z.object({

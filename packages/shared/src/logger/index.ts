@@ -4,8 +4,7 @@ import pretty from 'pino-pretty';
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
 function createLoggerInstance(name: string, options?: pino.LoggerOptions): pino.Logger {
-  const stream =
-    process.env.ATHENA_LOG_STREAM === 'stderr' ? process.stderr : process.stdout;
+  const stream = process.env.ATHENA_LOG_STREAM === 'stderr' ? process.stderr : process.stdout;
 
   const baseOptions: pino.LoggerOptions = {
     name,

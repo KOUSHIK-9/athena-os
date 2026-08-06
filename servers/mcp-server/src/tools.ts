@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { SelectorSchema } from '@athena-os/executor';
+import { SelectorSchema } from '@athena-os/core';
 
 export const ConnectParamsSchema = z.object({
   udid: z.string().optional(),

@@ -1,20 +1,19 @@
 #!/usr/bin/env node
 process.env.ATHENA_LOG_STREAM = 'stderr';
 
-const { startMCPServer } = await import('./server.js');
-const { createLogger } = await import('@athena-os/shared');
+void (async () => {
+  const { startMCPServer } = await import('./server.js');
 
-const logger = createLogger('ATHENA_MCP');
+  async function main(): Promise<void> {
+    await startMCPServer();
 
-async function main(): Promise<void> {
-  await startMCPServer();
+    process.stdin.resume();
+    process.on('SIGINT', () => process.exit(0));
+    process.on('SIGTERM', () => process.exit(0));
+  }
 
-  process.stdin.resume();
-  process.on('SIGINT', () => process.exit(0));
-  process.on('SIGTERM', () => process.exit(0));
-}
-
-main().catch((error) => {
-  logger.error({ error }, 'MCP server failed to start');
+  await main();
+})().catch((error: unknown) => {
+  console.error('[ATHENA_MCP] failed to start:', error instanceof Error ? error.message : error);
   process.exit(1);
 });

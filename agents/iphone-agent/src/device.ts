@@ -1,4 +1,4 @@
-import type { DeviceInfo } from '@athena-os/executor';
+import type { DeviceInfo } from '@athena-os/core';
 import { DeviceNotFoundError, DeviceNotReadyError } from '@athena-os/shared';
 import { createLogger } from '@athena-os/shared';
 import { execFile } from 'node:child_process';

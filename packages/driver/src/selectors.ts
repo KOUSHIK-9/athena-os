@@ -1,4 +1,4 @@
-import type { Selector } from '@athena-os/executor';
+import type { Selector } from '@athena-os/core';
 
 export interface ResolvedSelector {
   strategy: 'accessibility id' | 'xpath' | 'class name' | '-ios predicate string' | 'coordinates';

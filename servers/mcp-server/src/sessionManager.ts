@@ -1,5 +1,5 @@
 import { iPhoneExecutor } from '@athena-os/iphone-agent';
-import type { SessionConfig } from '@athena-os/executor';
+import type { SessionConfig } from '@athena-os/core';
 import { createLogger } from '@athena-os/shared';
 
 const logger = createLogger('MCPSessionManager');

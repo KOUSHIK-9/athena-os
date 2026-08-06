@@ -5,7 +5,7 @@ import {
   sortSelectors,
   createFallbackSelectors,
 } from './selectors.js';
-import type { Selector } from '@athena-os/executor';
+import type { Selector } from '@athena-os/core';
 
 describe('resolveSelector', () => {
   it('maps each strategy to the correct appium strategy', () => {
