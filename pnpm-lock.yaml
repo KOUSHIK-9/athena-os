@@ -21,6 +21,9 @@ catalogs:
     eslint:
       specifier: ^9.0.0
       version: 9.39.5
+    pino:
+      specifier: ^9.0.0
+      version: 9.14.0
     prettier:
       specifier: ^3.3.0
       version: 3.9.6
@@ -191,6 +194,9 @@ importers:
       plist:
         specifier: ^3.1.0
         version: 3.1.1
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.76
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -309,6 +315,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.0.0
         version: 1.30.0(zod@3.25.76)
+      pino:
+        specifier: 'catalog:'
+        version: 9.14.0
       zod:
         specifier: 'catalog:'
         version: 3.25.76

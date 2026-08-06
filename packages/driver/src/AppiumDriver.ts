@@ -4,6 +4,7 @@ import { resolveSelector, createFallbackSelectors } from './selectors.js';
 import { AppiumDriverError, AppiumSessionError, AppiumElementNotFoundError } from './errors.js';
 import { createLogger } from '@athena-os/shared';
 import { sleep, retry } from '@athena-os/shared';
+import { loadDriverConfig, type DriverConfig } from './config.js';
 
 const logger = createLogger('AppiumDriver');
 
@@ -19,6 +20,11 @@ export class AppiumDriver implements Driver {
   private sessionId: string | null = null;
   private capabilities: DriverCapabilities | null = null;
   private sessionConfig: SessionConfig | null = null;
+  private driverConfig: DriverConfig;
+
+  constructor(driverConfig?: DriverConfig) {
+    this.driverConfig = driverConfig ?? loadDriverConfig();
+  }
 
   async createSession(config: SessionConfig): Promise<DriverCapabilities> {
     this.sessionConfig = config;
@@ -40,6 +46,9 @@ export class AppiumDriver implements Driver {
 
     const remoteFn = remote as (opts: Record<string, unknown>) => Promise<unknown>;
 
+    const timeoutSeconds = this.driverConfig.timeout ?? config.timeout;
+    const retries = this.driverConfig.retries ?? config.retries;
+
     const caps = {
       platformName: 'iOS',
       'appium:automationName': 'XCUITest',
@@ -48,7 +57,7 @@ export class AppiumDriver implements Driver {
       'appium:bundleId': config.bundleId,
       'appium:noReset': true,
       'appium:fullReset': false,
-      'appium:newCommandTimeout': Math.floor(config.timeout / 1000),
+      'appium:newCommandTimeout': Math.floor(timeoutSeconds / 1000),
     };
 
     logger.debug({ caps }, 'Creating Appium session');
@@ -57,12 +66,12 @@ export class AppiumDriver implements Driver {
       this.client = await retry(
         () =>
           remoteFn({
-            hostname: '127.0.0.1',
-            port: 4723,
+            hostname: this.driverConfig.host,
+            port: this.driverConfig.port,
             logLevel: 'silent',
             capabilities: { alwaysMatch: caps },
           }),
-        { retries: config.retries, delay: 2000, backoff: 1.5 }
+        { retries, delay: 2000, backoff: 1.5 }
       );
 
       this.sessionId = this.client.sessionId;

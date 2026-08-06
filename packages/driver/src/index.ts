@@ -1,5 +1,6 @@
 export type { Driver, UITree, DriverCapabilities } from './Driver.js';
 export { AppiumDriver } from './AppiumDriver.js';
+export { DriverConfigSchema, loadDriverConfig, type DriverConfig } from './config.js';
 export {
   resolveSelector,
   getSelectorPriority,

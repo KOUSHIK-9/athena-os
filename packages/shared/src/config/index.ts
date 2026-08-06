@@ -9,17 +9,6 @@ export const DeviceConfigSchema = z.object({
 
 export type DeviceConfig = z.infer<typeof DeviceConfigSchema>;
 
-export const AppiumConfigSchema = z.object({
-  host: z.string().default('127.0.0.1'),
-  port: z.number().default(4723),
-  timeout: z.number().default(30000),
-  retries: z.number().default(3),
-  wdaPath: z.string().optional(),
-  wdaBundleId: z.string().default('com.apple.WebDriverAgentRunner'),
-});
-
-export type AppiumConfig = z.infer<typeof AppiumConfigSchema>;
-
 export const ServerConfigSchema = z.object({
   host: z.string().default('127.0.0.1'),
   port: z.number().default(3000),
@@ -38,7 +27,6 @@ export type MCPConfig = z.infer<typeof MCPConfigSchema>;
 
 export const ConfigSchema = z.object({
   device: DeviceConfigSchema,
-  appium: AppiumConfigSchema,
   server: ServerConfigSchema,
   mcp: MCPConfigSchema,
   logLevel: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
@@ -52,18 +40,6 @@ function getEnvConfig(): Partial<Config> {
       udid: process.env.ATHENA_DEVICE_UDID,
       autoDetect: process.env.ATHENA_AUTO_DETECT !== 'false',
       developerModeCheck: process.env.ATHENA_DEVELOPER_MODE_CHECK !== 'false',
-    },
-    appium: {
-      host: process.env.ATHENA_APPIUM_HOST ?? '127.0.0.1',
-      port: process.env.ATHENA_APPIUM_PORT ? parseInt(process.env.ATHENA_APPIUM_PORT, 10) : 4723,
-      timeout: process.env.ATHENA_APPIUM_TIMEOUT
-        ? parseInt(process.env.ATHENA_APPIUM_TIMEOUT, 10)
-        : 30000,
-      retries: process.env.ATHENA_APPIUM_RETRIES
-        ? parseInt(process.env.ATHENA_APPIUM_RETRIES, 10)
-        : 3,
-      wdaPath: process.env.ATHENA_WDA_PATH,
-      wdaBundleId: 'com.apple.WebDriverAgentRunner',
     },
     server: {
       host: process.env.ATHENA_SERVER_HOST ?? '127.0.0.1',
