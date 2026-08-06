@@ -56,5 +56,8 @@ DeviceInfo, Session, Events, Errors); no other package may define them.
 - Sprint 0 foundation green: monorepo, 8 packages, all checks pass.
 - Sprint 1 architecture cleanup: `core` extracted, Appium leak removed, CLI
   committed to MCP child process, architecture tests enforced in CI.
-- Next: `athena doctor`, `athena screenshot`, `athena launch` (implemented on the
-  existing architecture), then env-file + git + CI foundations.
+- Architecture Decision Records added under `docs/adr/` (core package,
+  MCP boundary, driver abstraction, CLI boundary).
+- Next (Sprint 1 reordered): `athena doctor` → `athena devices` →
+  `athena screenshot` → `athena launch`, implemented on the existing
+  architecture, then env-file + git + CI foundations.
