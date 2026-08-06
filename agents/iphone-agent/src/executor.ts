@@ -11,6 +11,7 @@ import {
 import { sessionManager } from './session.js';
 import { selectDevice, verifyDeviceReady } from './device.js';
 import { verifyWDA } from './wda.js';
+import { saveAndVerifyScreenshot } from './screenshot.js';
 import {
   createLogger,
   DeviceNotReadyError,
@@ -39,6 +40,16 @@ function isRetryableCode(code: string): boolean {
 interface PipelineRun {
   metadata: ExecutionMetadata;
   attempts: number;
+}
+
+interface AttemptPayload {
+  screenshot?: string;
+  metadata?: Record<string, unknown>;
+}
+
+interface FinalizedPayload {
+  payload: AttemptPayload;
+  metadata?: Record<string, unknown>;
 }
 
 export class iPhoneExecutor implements Executor {
@@ -99,8 +110,14 @@ export class iPhoneExecutor implements Executor {
       try {
         const payload = await this.executeAttempt(action);
 
+        // 3. Metadata + Save (screenshot pipeline)
+        const finalized =
+          action.type === 'screenshot'
+            ? await this.captureAndSave(payload as { screenshot?: string })
+            : { payload: payload as { screenshot?: string; metadata?: Record<string, unknown> } };
+
         // 4. Verification
-        const verification = await this.verify(action, payload);
+        const verification = await this.verify(action, finalized);
         execution.state = verification.verified ? 'succeeded' : 'failed';
 
         const finishedAt = new Date();
@@ -113,8 +130,8 @@ export class iPhoneExecutor implements Executor {
           success: verification.verified,
           action,
           duration: execution.durationMs,
-          screenshot: payload?.screenshot,
-          metadata: payload?.metadata,
+          screenshot: finalized.payload?.screenshot,
+          metadata: finalized.metadata,
           error: verification.verified ? undefined : 'Action failed verification',
           requestId,
           state: execution.state,
@@ -271,11 +288,38 @@ export class iPhoneExecutor implements Executor {
     }
   }
 
+  /** Finalize a screenshot: decode, validate, build metadata, save, and verify the file. */
+  private async captureAndSave(payload: AttemptPayload): Promise<FinalizedPayload> {
+    if (!payload.screenshot) {
+      throw toAthenaError(new Error('Screenshot action produced no image data'));
+    }
+
+    const buffer = Buffer.from(payload.screenshot, 'base64');
+    const directory = this.sessionConfig?.screenshotDir ?? 'screenshots';
+    const saved = await saveAndVerifyScreenshot({
+      buffer,
+      directory,
+      device: this.currentSession?.deviceUdid,
+    });
+
+    if (!saved.verified) {
+      logger.warn(
+        { path: saved.metadata.path, ...saved.verificationDetails },
+        'Screenshot file verification failed'
+      );
+    }
+
+    return {
+      payload,
+      metadata: { ...saved.metadata, verified: saved.verified } as unknown as Record<
+        string,
+        unknown
+      >,
+    };
+  }
+
   /** Per-action verification stage. Every action must be verified, not assumed. */
-  private async verify(
-    action: Action,
-    payload?: { screenshot?: string; metadata?: Record<string, unknown> }
-  ): Promise<VerificationResult> {
+  private async verify(action: Action, finalized?: FinalizedPayload): Promise<VerificationResult> {
     const sessionHealthy = await this.isSessionHealthy();
 
     switch (action.type) {
@@ -283,14 +327,19 @@ export class iPhoneExecutor implements Executor {
         return this.verifyLaunched(action.bundleId!);
 
       case 'screenshot': {
-        const verified = Boolean(payload?.screenshot && payload.screenshot.length > 0);
-        return createVerificationResult('screenshot-decoded', verified, {
-          bytes: payload?.screenshot?.length,
+        const saved = finalized?.metadata as
+          { verified?: boolean; width?: number; height?: number; path?: string } | undefined;
+        const verified = Boolean(saved?.verified && saved.width && saved.height);
+        return createVerificationResult('file-verified', verified, {
+          path: saved?.path,
+          width: saved?.width,
+          height: saved?.height,
         });
       }
 
       case 'getTree': {
-        const tree = (payload?.metadata?.tree ?? null) as { nodes: unknown[] } | null | undefined;
+        const tree = (finalized?.payload?.metadata?.tree ?? null) as
+          { nodes: unknown[] } | null | undefined;
         const verified = Boolean(tree && Array.isArray(tree.nodes) && tree.nodes.length > 0);
         return createVerificationResult('tree-has-nodes', verified, {
           nodeCount: tree?.nodes?.length,
@@ -417,6 +466,7 @@ export class iPhoneExecutor implements Executor {
       timeout: config?.timeout ?? 30000,
       retries: config?.retries ?? 3,
       screenshotOnFailure: config?.screenshotOnFailure ?? true,
+      screenshotDir: config?.screenshotDir ?? 'screenshots',
       verifyAppState: config?.verifyAppState ?? false,
       verifyAppLaunch: config?.verifyAppLaunch ?? false,
     };

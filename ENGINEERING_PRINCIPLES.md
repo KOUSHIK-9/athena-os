@@ -51,13 +51,25 @@ Types and zod schemas are defined once, in `packages/core`. No package re-declar
 - Refactor before features: never bolt features onto broken layering.
 - Sign-off each milestone (`git log`) before starting the next.
 
-## 7. Style
+## 7. Every Successful Action Must Be Observable
+
+Every action that runs through the pipeline produces:
+
+- a **Result** (the outcome),
+- a **Verification** (success is verified, never assumed),
+- **Telemetry** (requestId, action, state, attempts, duration, device, verified).
+
+No silent success. No silent failure. Everything leaves evidence. If an action produces no result, verification, and telemetry, it did not happen.
+
+This principle is what will power debugging, dashboards, and post-mortem analysis.
+
+## 8. Style
 
 - TypeScript strict, ESM only (`.js` import suffixes), `"type": "module"`.
 - `lint`, `typecheck`, `format:check` must pass before merge.
 - Runtime validation at boundaries uses zod.
 
-## 8. Publish Pipeline
+## 9. Publish Pipeline
 
 - `build` emits `dist/**` as `.js` (`"type": "module"`); exports maps must reference real files.
 - Node >= 20. Runtime features (doctor, screenshot, launch, GPT, memory) ride on this architecture as separate milestones.

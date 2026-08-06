@@ -2,6 +2,17 @@ export { iPhoneExecutor } from './executor.js';
 export { SessionManager, sessionManager } from './session.js';
 export { selectDevice, discoverDevices, getDeviceInfo, verifyDeviceReady } from './device.js';
 export { resolveAppNameToBundleId } from './apps.js';
+export {
+  parsePng,
+  buildScreenshotMetadata,
+  makeScreenshotPath,
+  screenshotFilename,
+  saveAndVerifyScreenshot,
+  verifyScreenshotFile,
+  type PngInfo,
+  type ScreenshotMetadata,
+  type SavedScreenshot,
+} from './screenshot.js';
 export { verifyWDA, buildWDA, installWDA, launchWDA, type WDAStatus } from './wda.js';
 export { iPhoneAgentError, DeviceSelectionError, WDAVerificationError } from './errors.js';
 export { AppiumDriver } from '@athena-os/driver';

@@ -247,18 +247,10 @@ program
     }
   });
 
-function readPngDimensions(buffer: Buffer): { width: number; height: number } | null {
-  if (buffer.length < 24) return null;
-  if (buffer.readUInt32BE(0) !== 0x89504e47) return null; // PNG signature
-  const width = buffer.readUInt32BE(16);
-  const height = buffer.readUInt32BE(20);
-  return { width, height };
-}
-
 program
   .command('screenshot')
   .description('Take a screenshot')
-  .option('-o, --output <path>', 'Output file path', './screenshots/latest.png')
+  .option('-o, --output <path>', 'Override output file path')
   .option('-j, --json', 'Output metadata as JSON')
   .action(async (cmd: { output?: string; json?: boolean }) => {
     const spinner = cmd.json ? null : ora('Taking screenshot...').start();
@@ -271,22 +263,38 @@ program
       }
 
       const buffer = Buffer.from(result.screenshot, 'base64');
-      const dims = readPngDimensions(buffer);
-      const output = cmd.output ?? './screenshots/latest.png';
+      const engineMeta =
+        (result.metadata as {
+          path?: string;
+          width?: number;
+          height?: number;
+          format?: string;
+          device?: string;
+          orientation?: string;
+          timestamp?: string;
+          verified?: boolean;
+        } | null) ?? {};
 
-      const fs = await import('node:fs');
-      const { dirname } = await import('node:path');
-      await fs.promises.mkdir(dirname(output), { recursive: true });
-      await fs.promises.writeFile(output, buffer);
+      let output = engineMeta.path ?? './screenshots/latest.png';
+      if (cmd.output) {
+        output = cmd.output;
+        const fs = await import('node:fs');
+        const { dirname } = await import('node:path');
+        await fs.promises.mkdir(dirname(output), { recursive: true });
+        await fs.promises.writeFile(output, buffer);
+      }
 
       const meta = {
         success: true,
-        device: result.deviceUdid ?? null,
-        timestamp: new Date().toISOString(),
-        width: dims?.width,
-        height: dims?.height,
+        device: engineMeta.device ?? result.deviceUdid ?? null,
+        timestamp: engineMeta.timestamp ?? new Date().toISOString(),
+        width: engineMeta.width,
+        height: engineMeta.height,
+        format: engineMeta.format ?? 'png',
+        orientation: engineMeta.orientation,
         path: output,
         bytes: buffer.length,
+        verified: engineMeta.verified ?? true,
       };
 
       if (cmd.json) {
@@ -297,8 +305,16 @@ program
       spinner?.succeed(chalk.green(`Screenshot saved to ${output}`));
       console.log(chalk.gray(`  device:    ${meta.device ?? 'unknown'}`));
       console.log(chalk.gray(`  timestamp: ${meta.timestamp}`));
-      if (dims) console.log(chalk.gray(`  size:      ${dims.width}×${dims.height}`));
-      console.log(chalk.gray(`  bytes:     ${buffer.length}`));
+      console.log(
+        chalk.gray(`  size:      ${meta.width ?? '?'}×${meta.height ?? '?'} (${meta.format})`)
+      );
+      if (meta.orientation) console.log(chalk.gray(`  orientation: ${meta.orientation}`));
+      console.log(chalk.gray(`  bytes:     ${meta.bytes}`));
+      console.log(
+        meta.verified
+          ? chalk.green('  verified:  ✓')
+          : chalk.yellow('  verified:  ✗ file verification failed')
+      );
     });
   });
 

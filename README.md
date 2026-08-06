@@ -8,54 +8,92 @@ Athena OS transforms your iPhone into an autonomous agent capable of understandi
 
 ## Architecture
 
+Athena is built around a single, immutable flow:
+
+```
+User
+  │
+  ▼
+Planner           (decides what to do - not yet wired)
+  │
+  ▼
+Action Pipeline   (Request → Validation → Execution → Verification → Telemetry → Result)
+  │
+  ▼
+Execution Engine  (executor, strategies, per-action verification)
+  │
+  ▼
+Driver            (the one layer allowed to know about Appium/WebDriverAgent)
+  │
+  ▼
+Device
+```
+
+The protocol that carries an action end-to-end is the Athena Protocol:
+
+```
+Action
+  │
+  ▼
+Validation
+  │
+  ▼
+Execution
+  │
+  ▼
+Verification
+  │
+  ▼
+Telemetry
+  │
+  ▼
+Result
+```
+
+That protocol does not care whether the executor controls an iPhone, a browser, a Mac, or an Android device. Every action leaves evidence: a Result, a Verification, and Telemetry.
+
+### Repository layout
+
 ```
 athena-os/
-├── apps/           # User-facing applications
-├── packages/       # Shared libraries and utilities
-├── servers/        # Backend services (MCP, API, etc.)
-├── agents/         # AI agent implementations
+├── apps/           # User-facing applications (CLI)
+├── servers/        # Backend services (MCP server)
+├── agents/         # Execution agents (iphone-agent)
+├── packages/       # Shared libraries (core, driver, executor, shared, sdk)
 ├── tests/          # Integration and E2E tests
-└── docs/           # Architecture, RFCs, guides
+└── docs/           # Architecture, ADRs, guides
 ```
 
 ## Getting Started
 
 ### Prerequisites
 
-- macOS 14+ (Sonoma or later)
-- Xcode 15+ with Command Line Tools
+- macOS with Xcode (required for device automation via WebDriverAgent)
+- iOS Device (physical, not simulator) with Developer Mode enabled
 - Node.js 20+ (via nvm/fnm)
 - pnpm 9+
-- iOS Device (physical, not simulator) with Developer Mode enabled
-- Appium 2+
+- Appium 2+ (server, started separately)
 - WebDriverAgent (built via Xcode)
 
-### Installation
+### Quick start
 
 ```bash
-# Clone and install
-git clone https://github.com/Athena-OS/athena-os.git
-cd athena-os
+# Install workspace deps
 pnpm install
 
-# Build WebDriverAgent (one-time)
-cd packages/webdriveragent
-xcodebuild -project WebDriverAgent.xcodeproj -scheme WebDriverAgentRunner -destination 'id=<YOUR_DEVICE_UDID>' test
+# Build all packages
+pnpm build
 
-# Start development
-pnpm dev
+# Check the environment (Xcode, devices, WebDriverAgent)
+pnpm --filter @athena-os/cli dev -- doctor        # or: node apps/cli/dist/index.js doctor
+
+# List devices
+node apps/cli/dist/index.js devices
+
+# Connect to the single available device and take a verified screenshot
+node apps/cli/dist/index.js connect
+node apps/cli/dist/index.js screenshot
 ```
-
-## Project Structure
-
-| Directory | Purpose |
-|-----------|---------|
-| `apps/` | Dashboard, CLI, companion apps |
-| `packages/` | Core SDK, MCP server, vision models, utilities |
-| `servers/` | Local API, relay, orchestration |
-| `agents/` | Planner, executor, verifier, memory |
-| `tests/` | E2E, integration, contract tests |
-| `docs/` | Architecture, RFCs, API reference |
 
 ## Development
 
@@ -72,22 +110,35 @@ pnpm typecheck
 
 # Build all packages
 pnpm build
+
+# Architecture contract check
+pnpm test:architecture
 ```
+
+## Releases
+
+Releases are tagged milestones, not just versions:
+
+| Tag              | Milestone                                  |
+|------------------|--------------------------------------------|
+| `v0.0.0`         | Repository bootstrap                       |
+| `v0.0.1`         | Core architecture extraction               |
+| `v0.0.2`         | MCP integration (CLI → MCP child process)   |
+| `v0.1.0-alpha.1` | Device discovery (doctor / devices)         |
+| `v0.1.0-alpha.2` | Executor stabilization (retries, session)   |
+| `v0.2.0-alpha.1` | Action Pipeline (Athena Protocol)           |
+| **`v0.2.0-alpha.2`** | **Screenshot lifecycle (metadata + save + verify)** |
 
 ## Documentation
 
+- [Engineering Principles](ENGINEERING_PRINCIPLES.md)
 - [Architecture Overview](docs/architecture/README.md)
-- [RFCs](docs/rfcs/)
-- [API Reference](docs/api/)
-- [Roadmap](ROADMAP.md)
-- [Contributing](CONTRIBUTING.md)
-
-## License
-
-MIT License - see [LICENSE](LICENSE) for details.
+- [Architecture Decision Records](docs/adr/)
 
 ## Community
 
 - GitHub: [github.com/Athena-OS](https://github.com/Athena-OS)
-- Discussions: [GitHub Discussions](https://github.com/Athena-OS/athena-os/discussions)
-- Issues: [GitHub Issues](https://github.com/Athena-OS/athena-os/issues)
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.

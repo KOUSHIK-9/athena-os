@@ -245,6 +245,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           timeout: 30000,
           retries: 3,
           screenshotOnFailure: true,
+          screenshotDir: 'screenshots',
           verifyAppState: true,
           verifyAppLaunch: true,
         });

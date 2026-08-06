@@ -17,6 +17,7 @@ export const SessionConfigSchema = z.object({
   timeout: z.number().default(30000),
   retries: z.number().default(3),
   screenshotOnFailure: z.boolean().default(true),
+  screenshotDir: z.string().default('screenshots'),
   verifyAppState: z.boolean().default(false),
   verifyAppLaunch: z.boolean().default(false),
 });
