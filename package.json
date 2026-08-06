@@ -10,6 +10,7 @@
     "build:packages": "turbo build --filter=@athena-os/*",
     "test": "turbo test",
     "test:unit": "turbo test --filter=@athena-os/*",
+    "test:architecture": "node scripts/architecture-check.mjs",
     "lint": "turbo lint",
     "lint:fix": "turbo lint:fix",
     "format": "turbo format",
