@@ -22,32 +22,65 @@ export class AthenaError extends Error {
   }
 }
 
-export class DeviceNotConnectedError extends AthenaError {
+export class ValidationError extends AthenaError {
+  constructor(
+    message: string,
+    public readonly field: string,
+    public readonly value: unknown
+  ) {
+    super(message, 'VALIDATION_ERROR', 400, { field, value });
+    this.name = 'ValidationError';
+  }
+}
+
+export class DeviceError extends AthenaError {
+  constructor(
+    message: string,
+    code: string,
+    statusCode: number,
+    public readonly udid: string,
+    details?: Record<string, unknown>
+  ) {
+    super(message, code, statusCode, { udid, ...details });
+    this.name = 'DeviceError';
+  }
+}
+
+export class DeviceNotConnectedError extends DeviceError {
   constructor(udid: string, reason?: string) {
     super(
       `Device not connected: ${udid}${reason ? ` (${reason})` : ''}`,
       'DEVICE_NOT_CONNECTED',
       404,
-      {
-        udid,
-        reason,
-      }
+      udid,
+      { reason }
     );
     this.name = 'DeviceNotConnectedError';
   }
 }
 
-export class DeviceNotFoundError extends AthenaError {
+export class DeviceNotFoundError extends DeviceError {
   constructor(udid: string) {
-    super(`Device not found: ${udid}`, 'DEVICE_NOT_FOUND', 404, { udid });
+    super(`Device not found: ${udid}`, 'DEVICE_NOT_FOUND', 404, udid);
     this.name = 'DeviceNotFoundError';
   }
 }
 
-export class DeviceNotReadyError extends AthenaError {
+export class DeviceNotReadyError extends DeviceError {
   constructor(udid: string, reason: string) {
-    super(`Device not ready: ${reason}`, 'DEVICE_NOT_READY', 409, { udid, reason });
+    super(`Device not ready: ${reason}`, 'DEVICE_NOT_READY', 409, udid, { reason });
     this.name = 'DeviceNotReadyError';
+  }
+}
+
+export class DriverError extends AthenaError {
+  constructor(
+    message: string,
+    public readonly driverOperation: string,
+    cause?: Error
+  ) {
+    super(message, 'DRIVER_ERROR', 500, { driverOperation, cause: cause?.message });
+    this.name = 'DriverError';
   }
 }
 
@@ -55,16 +88,18 @@ export class SessionError extends AthenaError {
   constructor(
     message: string,
     public readonly sessionId: string,
-    details?: Record<string, unknown>
+    details?: Record<string, unknown>,
+    code = 'SESSION_ERROR',
+    statusCode = 500
   ) {
-    super(message, 'SESSION_ERROR', 500, { sessionId, ...details });
+    super(message, code, statusCode, { sessionId, ...details });
     this.name = 'SessionError';
   }
 }
 
-export class SessionExpiredError extends AthenaError {
+export class SessionExpiredError extends SessionError {
   constructor(sessionId: string) {
-    super(`Session expired: ${sessionId}`, 'SESSION_EXPIRED', 410, { sessionId });
+    super(`Session expired: ${sessionId}`, sessionId, undefined, 'SESSION_EXPIRED', 410);
     this.name = 'SessionExpiredError';
   }
 }
@@ -84,13 +119,25 @@ export class ElementNotFoundError extends AthenaError {
   }
 }
 
-export class AppLaunchError extends AthenaError {
+export class ActionError extends AthenaError {
+  constructor(
+    message: string,
+    code: string,
+    public readonly action: string,
+    details?: Record<string, unknown>
+  ) {
+    super(message, code, 500, { action, ...details });
+    this.name = 'ActionError';
+  }
+}
+
+export class AppLaunchError extends ActionError {
   constructor(
     bundleId: string,
     public readonly sessionId: string,
     cause?: Error
   ) {
-    super(`Failed to launch app: ${bundleId}`, 'APP_LAUNCH_ERROR', 500, {
+    super(`Failed to launch app: ${bundleId}`, 'APP_LAUNCH_ERROR', 'launchApp', {
       bundleId,
       sessionId,
       cause: cause?.message,
@@ -99,14 +146,13 @@ export class AppLaunchError extends AthenaError {
   }
 }
 
-export class ActionExecutionError extends AthenaError {
+export class ActionExecutionError extends ActionError {
   constructor(
     action: string,
     public readonly sessionId: string,
     cause?: Error
   ) {
-    super(`Action failed: ${action}`, 'ACTION_EXECUTION_ERROR', 500, {
-      action,
+    super(`Action failed: ${action}`, 'ACTION_EXECUTION_ERROR', action, {
       sessionId,
       cause: cause?.message,
     });
@@ -134,25 +180,10 @@ export class ConfigurationError extends AthenaError {
   }
 }
 
-export class ValidationError extends AthenaError {
-  constructor(
-    message: string,
-    public readonly field: string,
-    public readonly value: unknown
-  ) {
-    super(message, 'VALIDATION_ERROR', 400, { field, value });
-    this.name = 'ValidationError';
-  }
-}
-
-export class DriverError extends AthenaError {
-  constructor(
-    message: string,
-    public readonly driverOperation: string,
-    cause?: Error
-  ) {
-    super(message, 'DRIVER_ERROR', 500, { driverOperation, cause: cause?.message });
-    this.name = 'DriverError';
+export class InternalError extends AthenaError {
+  constructor(message: string, details?: Record<string, unknown>) {
+    super(message, 'INTERNAL_ERROR', 500, details);
+    this.name = 'InternalError';
   }
 }
 
@@ -174,7 +205,7 @@ export function isAthenaError(error: unknown): error is AthenaError {
 export function toAthenaError(error: unknown): AthenaError {
   if (isAthenaError(error)) return error;
   if (error instanceof Error) {
-    return new AthenaError(error.message, 'UNKNOWN_ERROR', 500, { originalError: error.name });
+    return new InternalError(error.message, { originalError: error.name });
   }
-  return new AthenaError(String(error), 'UNKNOWN_ERROR', 500);
+  return new InternalError(String(error));
 }

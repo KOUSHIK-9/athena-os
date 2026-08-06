@@ -18,6 +18,7 @@ export const SessionConfigSchema = z.object({
   retries: z.number().default(3),
   screenshotOnFailure: z.boolean().default(true),
   verifyAppState: z.boolean().default(false),
+  verifyAppLaunch: z.boolean().default(false),
 });
 
 export type SessionConfig = z.infer<typeof SessionConfigSchema>;

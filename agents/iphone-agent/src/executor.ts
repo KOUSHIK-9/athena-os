@@ -1,5 +1,13 @@
 import { type Executor, type Session, type SessionConfig } from '@athena-os/executor';
-import { type Action, type Result, createSuccessResult, createErrorResult } from '@athena-os/core';
+import {
+  type Action,
+  type ActionResult,
+  type ExecutionMetadata,
+  type VerificationResult,
+  createVerificationResult,
+  createExecutionMetadata,
+  assertTransition,
+} from '@athena-os/core';
 import { sessionManager } from './session.js';
 import { selectDevice, verifyDeviceReady } from './device.js';
 import { verifyWDA } from './wda.js';
@@ -10,6 +18,7 @@ import {
   retry,
   sleep,
   ValidationError,
+  generateId,
 } from '@athena-os/shared';
 
 const logger = createLogger('iPhoneExecutor');
@@ -18,13 +27,18 @@ const RETRYABLE_ERROR_CODES = new Set([
   'DRIVER_ERROR',
   'SESSION_ERROR',
   'WDA_ERROR',
-  'UNKNOWN_ERROR',
+  'INTERNAL_ERROR',
   'APP_LAUNCH_ERROR',
   'DEVICE_NOT_CONNECTED',
 ]);
 
 function isRetryableCode(code: string): boolean {
   return RETRYABLE_ERROR_CODES.has(code);
+}
+
+interface PipelineRun {
+  metadata: ExecutionMetadata;
+  attempts: number;
 }
 
 export class iPhoneExecutor implements Executor {
@@ -53,44 +67,104 @@ export class iPhoneExecutor implements Executor {
     );
   }
 
-  async execute(action: Action): Promise<Result> {
+  async execute(action: Action): Promise<ActionResult> {
     if (!this.currentSession) {
       throw new Error('Executor not initialized. Call initialize() first.');
     }
 
+    // 1. Validation
     this.assertValidAction(action);
 
-    const startTime = Date.now();
+    const requestId = generateId();
+    const execution = createExecutionMetadata(requestId, action.type);
+    execution.state = 'running';
+    execution.sessionId = this.currentSession.id;
+    execution.deviceUdid = this.currentSession.deviceUdid;
 
     const maxRetries = this.sessionConfig?.retries ?? 3;
     const attempts = maxRetries + 1;
+    const run: PipelineRun = { metadata: execution, attempts: 0 };
+
+    this.transition(run, 'running');
 
     for (let attempt = 1; attempt <= attempts; attempt++) {
+      run.attempts = attempt;
+      execution.attempts = attempt;
+
       if (attempt > 1) {
         logger.warn({ action: action.type, attempt }, 'Retrying action after transient failure');
+        this.transition(run, 'retrying');
       }
 
       try {
-        const result = await this.runAttempt(action, startTime);
-        return result;
+        const payload = await this.executeAttempt(action);
+
+        // 4. Verification
+        const verification = await this.verify(action, payload);
+        execution.state = verification.verified ? 'succeeded' : 'failed';
+
+        const finishedAt = new Date();
+        execution.finishedAt = finishedAt;
+        execution.durationMs = finishedAt.getTime() - execution.startedAt.getTime();
+
+        this.emitTelemetry(execution, verification, action);
+
+        return {
+          success: verification.verified,
+          action,
+          duration: execution.durationMs,
+          screenshot: payload?.screenshot,
+          metadata: payload?.metadata,
+          error: verification.verified ? undefined : 'Action failed verification',
+          requestId,
+          state: execution.state,
+          execution,
+          verification,
+          timestamp: finishedAt,
+        };
       } catch (error) {
         const athenaError = toAthenaError(error);
 
         if (attempt >= attempts || !isRetryableCode(athenaError.code)) {
-          const duration = Date.now() - startTime;
+          const finishedAt = new Date();
+          execution.finishedAt = finishedAt;
+          execution.durationMs = finishedAt.getTime() - execution.startedAt.getTime();
+          execution.errorCode = athenaError.code;
+          execution.errorMessage = athenaError.message;
+          execution.state = 'failed';
+
           const screenshot = await this.captureScreenshot(athenaError.code);
+          const verification = createVerificationResult('none', false, {
+            errorCode: athenaError.code,
+            errorMessage: athenaError.message,
+          });
+
           logger.error(
             { action: action.type, attempt, code: athenaError.code, error: athenaError.message },
             'Action failed'
           );
-          return createErrorResult(action, duration, athenaError.message, { screenshot });
+          this.emitTelemetry(execution, verification, action);
+
+          return {
+            success: false,
+            action,
+            duration: execution.durationMs,
+            screenshot,
+            error: athenaError.message,
+            requestId,
+            state: execution.state,
+            execution,
+            verification,
+            timestamp: finishedAt,
+          };
         }
 
+        this.transition(run, 'pending');
         await sleep(100 * attempt);
       }
     }
 
-    throw new Error('Unreachable: action loop did not return or throw');
+    throw new Error(`Unreachable: action pipeline did not terminate for ${action.type}`);
   }
 
   private assertValidAction(action: Action): void {
@@ -126,7 +200,14 @@ export class iPhoneExecutor implements Executor {
     }
   }
 
-  private async runAttempt(action: Action, startTime: number): Promise<Result> {
+  private transition(run: PipelineRun, to: ExecutionMetadata['state']): void {
+    assertTransition(run.metadata.state, to);
+    run.metadata.state = to;
+  }
+
+  private async executeAttempt(
+    action: Action
+  ): Promise<{ screenshot?: string; metadata?: Record<string, unknown> } | undefined> {
     let managed;
     try {
       managed = await sessionManager.getSession(this.currentSession!.deviceUdid);
@@ -136,65 +217,48 @@ export class iPhoneExecutor implements Executor {
 
     const driver = managed.driver;
 
-    let result: Result;
-
     switch (action.type) {
       case 'launchApp':
         await driver.launchApp(action.bundleId!);
-        await this.verifyAppState(action.bundleId!);
-        result = createSuccessResult(action, Date.now() - startTime);
-        break;
+        return undefined;
 
       case 'terminateApp':
         await driver.terminateApp(action.bundleId!);
-        result = createSuccessResult(action, Date.now() - startTime);
-        break;
+        return undefined;
 
       case 'tap':
         await driver.tap(action.selector!);
-        result = createSuccessResult(action, Date.now() - startTime);
-        break;
+        return undefined;
 
       case 'type':
         await driver.type(action.text!, action.selector);
-        result = createSuccessResult(action, Date.now() - startTime);
-        break;
+        return undefined;
 
       case 'swipe':
         await driver.swipe(action.selector!, action.direction, action.distance);
-        result = createSuccessResult(action, Date.now() - startTime);
-        break;
+        return undefined;
 
       case 'screenshot': {
-        const screenshot = await driver.screenshot();
-        result = createSuccessResult(action, Date.now() - startTime, {
-          screenshot: screenshot.toString('base64'),
-        });
-        break;
+        const screenshotBuffer = await driver.screenshot();
+        return { screenshot: screenshotBuffer.toString('base64') };
       }
 
       case 'getTree': {
         const tree = await driver.getUITree();
-        result = createSuccessResult(action, Date.now() - startTime, {
-          metadata: { tree },
-        });
-        break;
+        return { metadata: { tree } };
       }
 
       case 'pressHome':
         await driver.pressHome();
-        result = createSuccessResult(action, Date.now() - startTime);
-        break;
+        return undefined;
 
       case 'back':
         await driver.back();
-        result = createSuccessResult(action, Date.now() - startTime);
-        break;
+        return undefined;
 
       case 'wait':
         await driver.wait(action.duration);
-        result = createSuccessResult(action, Date.now() - startTime);
-        break;
+        return undefined;
 
       default: {
         const maybeAction = action as { type: string };
@@ -205,23 +269,108 @@ export class iPhoneExecutor implements Executor {
         );
       }
     }
-
-    return result;
   }
 
-  private async verifyAppState(bundleId: string): Promise<void> {
-    if (!this.sessionConfig?.verifyAppState) return;
-    try {
-      const managed = await sessionManager.getSession(this.currentSession!.deviceUdid);
-      const info = await retry(() => managed.driver.getDeviceInfo(), {
-        retries: 3,
-        delay: 250,
-        backoff: 2,
-      });
-      logger.debug({ bundleId, udid: info.udid }, 'App state verified');
-    } catch (error) {
-      logger.warn({ bundleId, error }, 'App state verification failed');
+  /** Per-action verification stage. Every action must be verified, not assumed. */
+  private async verify(
+    action: Action,
+    payload?: { screenshot?: string; metadata?: Record<string, unknown> }
+  ): Promise<VerificationResult> {
+    const sessionHealthy = await this.isSessionHealthy();
+
+    switch (action.type) {
+      case 'launchApp':
+        return this.verifyLaunched(action.bundleId!);
+
+      case 'screenshot': {
+        const verified = Boolean(payload?.screenshot && payload.screenshot.length > 0);
+        return createVerificationResult('screenshot-decoded', verified, {
+          bytes: payload?.screenshot?.length,
+        });
+      }
+
+      case 'getTree': {
+        const tree = (payload?.metadata?.tree ?? null) as { nodes: unknown[] } | null | undefined;
+        const verified = Boolean(tree && Array.isArray(tree.nodes) && tree.nodes.length > 0);
+        return createVerificationResult('tree-has-nodes', verified, {
+          nodeCount: tree?.nodes?.length,
+        });
+      }
+
+      default: {
+        return createVerificationResult('session-healthy', sessionHealthy, {
+          sessionId: this.currentSession?.id,
+        });
+      }
     }
+  }
+
+  private async verifyLaunched(bundleId: string): Promise<VerificationResult> {
+    if (!this.sessionConfig?.verifyAppLaunch) {
+      return {
+        verified: true,
+        strategy: 'launch-acknowledged',
+        checkedAt: new Date(),
+      };
+    }
+
+    try {
+      await retry(
+        async () => {
+          const managed = await sessionManager.getSession(this.currentSession!.deviceUdid);
+          const healthy = managed.driver.isSessionActive();
+          if (!healthy) {
+            throw new Error('Session inactive after launch');
+          }
+        },
+        { retries: 3, delay: 250, backoff: 2 }
+      );
+      return {
+        verified: true,
+        strategy: 'session-active',
+        checkedAt: new Date(),
+      };
+    } catch (error) {
+      logger.warn({ bundleId, error }, 'App launch verification failed');
+      return {
+        verified: false,
+        strategy: 'session-active',
+        checkedAt: new Date(),
+        details: { error: error instanceof Error ? error.message : String(error) },
+      };
+    }
+  }
+
+  private async isSessionHealthy(): Promise<boolean> {
+    if (!this.currentSession) return false;
+    try {
+      const managed = await sessionManager.getSession(this.currentSession.deviceUdid);
+      return managed.driver.isSessionActive();
+    } catch {
+      return false;
+    }
+  }
+
+  private emitTelemetry(
+    execution: ExecutionMetadata,
+    verification: VerificationResult,
+    action: Action
+  ): void {
+    logger.info(
+      {
+        action: action.type,
+        startedAt: execution.startedAt.toISOString(),
+        durationMs: execution.durationMs,
+        attempts: execution.attempts,
+        retries: Math.max(0, (execution.attempts ?? 1) - 1),
+        verified: verification.verified,
+        device: execution.deviceUdid,
+        sessionId: execution.sessionId,
+        status: execution.state,
+        requestId: execution.requestId,
+      },
+      'action.execute'
+    );
   }
 
   private async captureScreenshot(code: string): Promise<string | undefined> {
@@ -256,14 +405,7 @@ export class iPhoneExecutor implements Executor {
   }
 
   async isHealthy(): Promise<boolean> {
-    if (!this.currentSession) return false;
-
-    try {
-      const managed = await sessionManager.getSession(this.currentSession.deviceUdid);
-      return managed.driver.isSessionActive();
-    } catch {
-      return false;
-    }
+    return this.isSessionHealthy();
   }
 
   static async createWithAutoDevice(config?: Partial<SessionConfig>): Promise<iPhoneExecutor> {
@@ -276,6 +418,7 @@ export class iPhoneExecutor implements Executor {
       retries: config?.retries ?? 3,
       screenshotOnFailure: config?.screenshotOnFailure ?? true,
       verifyAppState: config?.verifyAppState ?? false,
+      verifyAppLaunch: config?.verifyAppLaunch ?? false,
     };
 
     const executor = new iPhoneExecutor();
