@@ -69,11 +69,14 @@ reasoning engine complete.
   Executable Plan` with **no LLM**.
 - `packages/reasoning` reference implementation; 64 tests; 9 executable
   example scenarios; architecture check PASS.
-- RFC-0012: Reasoning Backend Contract & Conformance (**in progress**) — the
-  `ReasoningBackend` contract + conformance harness landed in
-  `packages/reasoning-backends` (parity & behavioral fixtures, PR 1 of 3).
-  The LLM backend itself (PR 2 wiring + PR 3 the model) is planned. The
-  validator stays the authority; the LLM is never trusted, only validated.
+- RFC-0012: Reasoning Backend Contract & Conformance (**in progress**) — PR 1
+  (contract + conformance harness + parity/behavioral fixtures) and PR 2
+  (backend integration) are landed: the engine is now backend-agnostic
+  (`ReasoningEngine` accepts any `ReasoningBackend`), and
+  `DeterministicReasoningBackend` is the certified reference implementation
+  (reproduces every parity fixture exactly). PR 3 — the LLM backend — is
+  planned. The validator stays the authority; the LLM is never trusted,
+  only validated.
 - Both backends implement RFC-0009; the Execution Plan remains the stable
   contract.
 

@@ -138,20 +138,27 @@ plan, or it does not conform.
 ## Reference Implementation
 
 - Package: [`packages/reasoning-backends`](../../packages/reasoning-backends/README.md)
+- Engine wiring lives in `packages/reasoning` (the engine's home).
 - Module map:
 
 | Concern | Module |
 |---------|--------|
 | ReasoningBackend contract | `@athena-os/reasoning/src/backend.ts` (owned here) |
+| Engine wiring (ReasoningEngine, backend-agnostic) | `@athena-os/reasoning/src/engine.ts` |
+| Deterministic candidate (stages 1–4) | `@athena-os/reasoning/src/deterministicBackend.ts` |
+| Reference backend namespace | `deterministic/index.ts` (adopts the above) |
 | Scenario type | `conformance/scenario.ts` |
 | Harness (runScenario/runConformance/runParity) | `conformance/harness.ts` |
 | Parity fixtures | `conformance/fixtures/parity.ts` |
 | Behavioral fixtures | `conformance/fixtures/behavioral.ts` |
 
-- No LLM or model is involved anywhere in this package yet — the harness and
-  its fixtures are the contract, testable without any API keys (RFC-0012
-  staged implementation: PR 1 contract+conformance, PR 2 engine wiring +
-  Deterministic Backend, PR 3 LLM backend).
+- Status of implementation: PR 1 (contract + conformance harness + fixtures)
+  and PR 2 (backend integration) are landed. The engine's
+  `ReasoningEngine` accepts any `ReasoningBackend`; the reference is
+  `DeterministicReasoningBackend`, certified against the parity fixtures by
+  `runConformance`. No model or API key is involved anywhere — the harness
+  and fixtures are the entire contract (RFC-0012 staged implementation:
+  PR 3 LLM backend remains).
 
 ## Conformance
 

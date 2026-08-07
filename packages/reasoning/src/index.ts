@@ -1,6 +1,7 @@
-export { DeterministicReasoningEngine } from './engine.js';
+export { DeterministicReasoningEngine, ReasoningEngine } from './engine.js';
 export type { ReasoningResult, EngineComponents } from './engine.js';
 export type { ReasoningBackend, ReasoningBackendResult } from './backend.js';
+export { DeterministicReasoningBackend } from './deterministicBackend.js';
 export { DeterministicSimulator } from './simulator.js';
 export type {
   Simulator,

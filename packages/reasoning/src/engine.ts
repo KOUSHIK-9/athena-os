@@ -5,26 +5,14 @@ import type {
   Intent,
   SimulationEnvironment,
 } from '@athena-os/core';
-import { DeterministicGoalExtractor, type GoalExtractor } from './goalExtractor.js';
-import {
-  DeterministicConstraintChecker,
-  type ConstraintChecker,
-} from './constraintChecker.js';
-import {
-  DeterministicCapabilityMatcher,
-  selectCapabilities,
-  type CapabilityMatcher,
-} from './capabilityMatcher.js';
-import { DeterministicPlanBuilder, type PlanBuilder } from './planBuilder.js';
-import {
-  DeterministicPlanValidator,
-  type PlanValidator,
-} from './validator.js';
-import { DeterministicSimulator, type PlanSimulationResult } from './simulator.js';
+import type { ReasoningBackend } from './backend.js';
+import { DeterministicReasoningBackend } from './deterministicBackend.js';
 import {
   DeterministicExecutionGraphBuilder,
   type ExecutionGraphBuilder,
 } from './executionGraphBuilder.js';
+import { DeterministicSimulator, type PlanSimulationResult } from './simulator.js';
+import { DeterministicPlanValidator, type PlanValidator } from './validator.js';
 
 const EMPTY_ENVIRONMENT: SimulationEnvironment = { availableResources: [] };
 
@@ -39,99 +27,64 @@ export type ReasoningResult =
   | { kind: 'rejected'; reasons: string[] };
 
 export interface EngineComponents {
-  goalExtractor: GoalExtractor;
-  constraintChecker: ConstraintChecker;
-  capabilityMatcher: CapabilityMatcher;
-  planBuilder: PlanBuilder;
+  backend: ReasoningBackend;
   planValidator: PlanValidator;
   simulator: DeterministicSimulator;
   executionGraphBuilder: ExecutionGraphBuilder;
 }
 
 /**
- * RFC-0011 Deterministic Reasoning Engine.
+ * RFC-0012 backend-agnostic reasoning engine.
  *
- * Composes the seven pipeline stages into a single `reason` entry point.
- * Stages are injected so any of them can later be replaced by an
- * RFC-0012 (LLM) implementation behind the same interface.
+ * The engine does not know which backend it is talking to — deterministic
+ * today, LLM tomorrow — it only consumes the candidate result and applies
+ * the authoritative, engine-owned stages: validation (RFC-0011 §1.5),
+ * simulation, and execution graph construction. A candidate that is not
+ * `executionPlan` (clarification request or rejection) is passed through
+ * untouched: those are backend decisions the engine honors.
  */
-export class DeterministicReasoningEngine {
-  private readonly components: EngineComponents;
-
-  constructor(private readonly registry: CapabilityRegistry) {
-    this.components = {
-      goalExtractor: new DeterministicGoalExtractor(),
-      constraintChecker: new DeterministicConstraintChecker(),
-      capabilityMatcher: new DeterministicCapabilityMatcher(),
-      planBuilder: new DeterministicPlanBuilder(),
-      planValidator: new DeterministicPlanValidator(),
-      simulator: new DeterministicSimulator(),
-      executionGraphBuilder: new DeterministicExecutionGraphBuilder(),
-    };
-  }
+export class ReasoningEngine {
+  constructor(
+    private readonly registry: CapabilityRegistry,
+    private readonly components: EngineComponents
+  ) {}
 
   reason(intent: Intent, environment: SimulationEnvironment = EMPTY_ENVIRONMENT): ReasoningResult {
-    const {
-      goalExtractor,
-      constraintChecker,
-      capabilityMatcher,
-      planBuilder,
-      planValidator,
-      simulator,
-      executionGraphBuilder,
-    } = this.components;
+    const { backend, planValidator, simulator, executionGraphBuilder } = this.components;
 
-    const goals = goalExtractor.extractGoals(intent);
-    if (goals.length === 0) {
-      return {
-        kind: 'clarificationRequired',
-        reason: 'intent carries no extractable goals',
-      };
+    const candidate = backend.reason(intent, this.registry);
+    if (candidate.kind !== 'executionPlan') {
+      return candidate;
     }
 
-    const { accepted, rejected } = constraintChecker.checkGoals(goals, intent.constraints);
-    if (rejected.length > 0) {
-      return {
-        kind: 'rejected',
-        reasons: rejected.map((r) => r.reason),
-      };
-    }
-
-    const { goals: matchedGoals, unmatched } = capabilityMatcher.matchGoals(accepted, this.registry);
-    if (unmatched.length > 0) {
-      return {
-        kind: 'clarificationRequired',
-        reason: `no capability for goals: ${unmatched.map((u) => u.goal.kind).join(', ')}`,
-      };
-    }
-
-    const { selections, unresolved } = selectCapabilities({ goals: matchedGoals, unmatched });
-    if (unresolved.length > 0) {
-      return {
-        kind: 'clarificationRequired',
-        reason: `no capability for goals: ${unresolved.map((u) => u.goal.kind).join(', ')}`,
-      };
-    }
-
-    const plan = planBuilder.buildPlan({
-      intentId: intent.id,
-      bindings: selections.map((selection) => ({
-        goal: selection.goal,
-        capability: selection.capability,
-      })),
-    });
-
-    const validation = planValidator.validatePlan(plan, this.registry);
+    const validation = planValidator.validatePlan(candidate.plan, this.registry);
     if (!validation.valid) {
       return {
         kind: 'rejected',
-        reasons: validation.errors.map((e) => e.message),
+        reasons: validation.errors.map((error) => error.message),
       };
     }
 
-    const simulation = simulator.simulate(plan, environment, this.registry);
-    const executionGraph = executionGraphBuilder.buildExecutionGraph(plan);
+    const simulation = simulator.simulate(candidate.plan, environment, this.registry);
+    const executionGraph = executionGraphBuilder.buildExecutionGraph(candidate.plan);
 
-    return { kind: 'executionPlan', plan, simulation, executionGraph };
+    return { kind: 'executionPlan', plan: candidate.plan, simulation, executionGraph };
+  }
+}
+
+/**
+ * RFC-0011 reference composition: the engine wired with the deterministic
+ * backend and default engine-owned stages. Kept as the convenience entry
+ * point so existing call sites keep working; any `ReasoningBackend` can be
+ * injected through `ReasoningEngine` instead.
+ */
+export class DeterministicReasoningEngine extends ReasoningEngine {
+  constructor(registry: CapabilityRegistry) {
+    super(registry, {
+      backend: new DeterministicReasoningBackend(),
+      planValidator: new DeterministicPlanValidator(),
+      simulator: new DeterministicSimulator(),
+      executionGraphBuilder: new DeterministicExecutionGraphBuilder(),
+    });
   }
 }

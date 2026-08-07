@@ -2,9 +2,11 @@
 
 Implements:
 RFC-0011 — Deterministic Reasoning Engine
+RFC-0012 — Reasoning Backend Contract (the `ReasoningBackend` interface)
 
 Purpose:
-Transforms Intent into a validated Execution Plan without using an LLM.
+Transforms Intent into a validated Execution Plan without using an LLM, and
+defines the contract that makes reasoning backend-interchangeable.
 
 ## Pipeline
 
@@ -12,19 +14,13 @@ Transforms Intent into a validated Execution Plan without using an LLM.
 Intent
    │
    ▼
-Goal Extractor
+ReasoningBackend           ← the candidate producer (RFC-0012)
+   │                         today: DeterministicReasoningBackend
+   ▼                          future: any backend behind this contract
+Candidate Plan
    │
    ▼
-Constraint Checker
-   │
-   ▼
-Capability Matcher
-   │
-   ▼
-Plan Builder
-   │
-   ▼
-Plan Validator
+Plan Validator             ← the authority (RFC-0011 §1.5)
    │
    ▼
 Simulation
@@ -36,7 +32,12 @@ Execution Graph Builder
 Execution Plan (+ Simulation + Graph)
 ```
 
-Each stage is an independent module in `src/`, owned by this package only.
-The engine (`engine.ts`) composes the stages; every stage is replaceable
-(an LLM-backed RFC-0012 implementation may swap in later, behind the same
-interfaces defined here).
+The engine (`engine.ts`) is backend-agnostic. `ReasoningEngine` accepts any
+`ReasoningBackend`, validates/simulates/graphs its candidate, and never
+re-plans. `DeterministicReasoningEngine` is the RFC-0011 reference
+composition: `ReasoningEngine` wired with `DeterministicReasoningBackend`
+(the deterministic candidate protocol — goal extraction → constraint
+checking → capability matching → plan building) plus the engine-owned
+stages. A future LLM backend (RFC-0012, implemented in
+`@athena-os/reasoning-backends`) can be injected behind the same interface
+without touching anything here.
