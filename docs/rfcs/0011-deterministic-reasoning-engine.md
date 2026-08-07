@@ -90,19 +90,26 @@ Every stage has one input, one output, and no side effects.
 ### 1.3 Capability Matcher
 
 - **Input:** Accepted `Goal[]`, `CapabilityRegistry`
-- **Output:** Matched Capabilities + Unmatched Goals
-- **Contract:** Resolves each Goal to a Capability that can satisfy it
-  (RFC-0005 §8). The matcher reasons over **Capability Descriptors**
-  (what a capability *can do*), never over runtime Capability objects
-  (how it *does it*). The engine must not know `driver.launch()`.
+- **Output:** Capability Candidates per Goal + Unmatched Goals
+- **Contract:** Resolves each Goal to **every** capability that can satisfy
+  it (RFC-0005 §8). The matcher never assumes uniqueness: a Goal may have
+  zero, one, or many candidates (e.g. "Open Camera" → `launch_app` or
+  `activate_existing_app`). Each candidate carries a reason explaining its
+  selection. The matcher reasons over **Capability Descriptors** (what a
+  capability *can do*), never over runtime Capability objects (how it
+  *does it*). The engine must not know `driver.launch()`.
+- **Selection is a separate act.** The deterministic engine selects the
+  first candidate (registry order); a future Plan Optimizer may choose
+  among candidates by preference. The matcher interface does not change.
 - **Failure:** Unmatched Goals produce a Clarification Request.
 
 ### 1.4 Plan Builder
 
-- **Input:** Intent id, Goals, matched Capabilities
+- **Input:** Intent id, Goal ↔ Capability bindings
 - **Output:** `ExecutionPlan` (RFC-0006)
-- **Contract:** Assembles plan Steps, ordered by Goal dependencies. The
-  deterministic implementation emits one sequential Step per Goal.
+- **Contract:** Assembles plan Steps from explicit bindings, ordered by
+  binding order. The builder performs **construction only** — no selection,
+  no optimization, no search. One sequential Step per binding.
 
 ### 1.5 Plan Validator
 

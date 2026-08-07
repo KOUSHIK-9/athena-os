@@ -10,6 +10,7 @@ import {
 } from './constraintChecker.js';
 import {
   DeterministicCapabilityMatcher,
+  selectCapabilities,
   type CapabilityMatcher,
 } from './capabilityMatcher.js';
 import { DeterministicPlanBuilder, type PlanBuilder } from './planBuilder.js';
@@ -71,7 +72,7 @@ export class DeterministicReasoningEngine {
       };
     }
 
-    const { matches, unmatched } = capabilityMatcher.matchGoals(accepted, this.registry);
+    const { goals: matchedGoals, unmatched } = capabilityMatcher.matchGoals(accepted, this.registry);
     if (unmatched.length > 0) {
       return {
         kind: 'clarificationRequired',
@@ -79,10 +80,20 @@ export class DeterministicReasoningEngine {
       };
     }
 
+    const { selections, unresolved } = selectCapabilities({ goals: matchedGoals, unmatched });
+    if (unresolved.length > 0) {
+      return {
+        kind: 'clarificationRequired',
+        reason: `no capability for goals: ${unresolved.map((u) => u.goal.kind).join(', ')}`,
+      };
+    }
+
     const plan = planBuilder.buildPlan({
       intentId: intent.id,
-      goals: accepted,
-      capabilities: matches,
+      bindings: selections.map((selection) => ({
+        goal: selection.goal,
+        capability: selection.capability,
+      })),
     });
 
     const validation = planValidator.validatePlan(plan, this.registry);

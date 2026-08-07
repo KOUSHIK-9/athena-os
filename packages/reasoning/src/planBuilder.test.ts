@@ -15,11 +15,13 @@ const capabilities: CapabilityDescriptor[] = [
 describe('DeterministicPlanBuilder', () => {
   const builder = new DeterministicPlanBuilder();
 
-  it('builds one sequential step per goal in declaration order', () => {
+  it('builds one sequential step per binding in declaration order', () => {
     const plan = builder.buildPlan({
       intentId: 'intent-1',
-      goals,
-      capabilities,
+      bindings: [
+        { goal: goals[0], capability: capabilities[0] },
+        { goal: goals[1], capability: capabilities[1] },
+      ],
     });
 
     expect(plan.id).toBe('plan-intent-1');
@@ -41,8 +43,8 @@ describe('DeterministicPlanBuilder', () => {
     });
   });
 
-  it('builds an empty plan for zero goals', () => {
-    const plan = builder.buildPlan({ intentId: 'intent-0', goals: [], capabilities: [] });
+  it('builds an empty plan for zero bindings', () => {
+    const plan = builder.buildPlan({ intentId: 'intent-0', bindings: [] });
     expect(plan.steps).toEqual([]);
   });
 });

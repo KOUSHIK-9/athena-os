@@ -4,9 +4,17 @@ export { DeterministicGoalExtractor } from './goalExtractor.js';
 export type { GoalExtractor } from './goalExtractor.js';
 export { DeterministicConstraintChecker } from './constraintChecker.js';
 export type { ConstraintChecker, GoalCheckResult, RejectedGoal } from './constraintChecker.js';
-export { DeterministicCapabilityMatcher } from './capabilityMatcher.js';
-export type { CapabilityMatcher, CapabilityMatchResult, UnmatchedGoal } from './capabilityMatcher.js';
+export { DeterministicCapabilityMatcher, selectCapabilities } from './capabilityMatcher.js';
+export type {
+  CapabilityMatcher,
+  CapabilityCandidate,
+  CapabilityMatchResult,
+  CapabilitySelection,
+  GoalCapabilityOptions,
+  SelectionResult,
+  UnmatchedGoal,
+} from './capabilityMatcher.js';
 export { DeterministicPlanBuilder } from './planBuilder.js';
-export type { PlanBuilder, PlanInput } from './planBuilder.js';
+export type { PlanBuilder, PlanInput, GoalCapabilityBinding } from './planBuilder.js';
 export { DeterministicPlanValidator, isPlanValid } from './validator.js';
 export type { PlanValidator, PlanValidationResult, PlanViolation } from './validator.js';
