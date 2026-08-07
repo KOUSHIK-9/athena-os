@@ -60,19 +60,23 @@ independent of any model or device.
 
 ## Phase 4 — Cognition 🚧 **Current**
 
-**Milestone 4:** prove the language can *think*.
+**Baseline Established:** `v0.4.0-alpha.1` (Milestone 4) — deterministic
+reasoning engine complete.
 
-- RFC-0011: Deterministic Reasoning Engine — transform
+- RFC-0011: Deterministic Reasoning Engine (**Implemented**) — full pipeline:
   `Intent → Goal Extractor → Constraint Checker → Capability Matcher →
-  Plan Builder → Plan Validator → Execution Plan` with **no LLM**.
-- RFC-0012: LLM Reasoning Backend — a second implementation of RFC-0009
-  (GPT/Claude/future models). The validator stays the authority; the LLM is
-  never trusted, only validated.
+  Plan Builder → Plan Validator → Simulation → Execution Graph Builder →
+  Executable Plan` with **no LLM**.
+- `packages/reasoning` reference implementation; 64 tests; 9 executable
+  example scenarios; architecture check PASS.
+- RFC-0012: LLM Reasoning Backend (**pending**) — a second implementation of
+  RFC-0009 (GPT/Claude/future models). The validator stays the authority; the
+  LLM is never trusted, only validated.
 - Both backends implement RFC-0009; the Execution Plan remains the stable
   contract.
 
-*This phase will prove:* the architecture is sufficient independently of any
-model.
+*This phase has proven:* the architecture is sufficient independently of any
+model. What remains is the model backend itself.
 
 ## Phase 5 — Memory
 
@@ -110,5 +114,6 @@ Every feature must answer before any code is written:
 
 **Phase 4 — Cognition**
 
-**Current Objective:** Prove that Athena's conceptual language can produce
-valid Execution Plans without relying on an LLM.
+**Current Objective:** Complete the LLM Reasoning Backend (RFC-0012) behind
+the deterministic pipeline — the deterministic engine is done; the model
+backend implements RFC-0009 and never bypasses the validator.

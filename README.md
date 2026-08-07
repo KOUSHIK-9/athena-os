@@ -128,6 +128,8 @@ Releases are tagged milestones, not just versions:
 | `v0.1.0-alpha.2` | Executor stabilization (retries, session)   |
 | `v0.2.0-alpha.1` | Action Pipeline (Athena Protocol)           |
 | **`v0.2.0-alpha.2`** | **Screenshot lifecycle (metadata + save + verify)** |
+| **`v0.3.0-alpha.1`** | **Execution Platform baseline (Milestone 2)** |
+| **`v0.4.0-alpha.1`** | **Deterministic Cognition baseline (Milestone 4)** |
 
 ## Documentation
 
