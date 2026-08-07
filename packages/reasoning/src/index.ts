@@ -1,5 +1,12 @@
 export { DeterministicReasoningEngine } from './engine.js';
 export type { ReasoningResult, EngineComponents } from './engine.js';
+export { DeterministicSimulator } from './simulator.js';
+export type {
+  Simulator,
+  PlanSimulationResult,
+  StepPrediction,
+  PredictedOutcome,
+} from './simulator.js';
 export { DeterministicGoalExtractor } from './goalExtractor.js';
 export type { GoalExtractor } from './goalExtractor.js';
 export { DeterministicConstraintChecker } from './constraintChecker.js';

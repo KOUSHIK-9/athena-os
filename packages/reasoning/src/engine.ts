@@ -2,6 +2,7 @@ import type {
   CapabilityRegistry,
   ExecutionPlan,
   Intent,
+  SimulationEnvironment,
 } from '@athena-os/core';
 import { DeterministicGoalExtractor, type GoalExtractor } from './goalExtractor.js';
 import {
@@ -18,9 +19,16 @@ import {
   DeterministicPlanValidator,
   type PlanValidator,
 } from './validator.js';
+import { DeterministicSimulator, type PlanSimulationResult } from './simulator.js';
+
+const EMPTY_ENVIRONMENT: SimulationEnvironment = { availableResources: [] };
 
 export type ReasoningResult =
-  | { kind: 'executionPlan'; plan: ExecutionPlan }
+  | {
+      kind: 'executionPlan';
+      plan: ExecutionPlan;
+      simulation: PlanSimulationResult;
+    }
   | { kind: 'clarificationRequired'; reason: string }
   | { kind: 'rejected'; reasons: string[] };
 
@@ -30,12 +38,13 @@ export interface EngineComponents {
   capabilityMatcher: CapabilityMatcher;
   planBuilder: PlanBuilder;
   planValidator: PlanValidator;
+  simulator: DeterministicSimulator;
 }
 
 /**
  * RFC-0011 Deterministic Reasoning Engine.
  *
- * Composes the five pipeline stages into a single `reason` entry point.
+ * Composes the six pipeline stages into a single `reason` entry point.
  * Stages are injected so any of them can later be replaced by an
  * RFC-0012 (LLM) implementation behind the same interface.
  */
@@ -49,11 +58,12 @@ export class DeterministicReasoningEngine {
       capabilityMatcher: new DeterministicCapabilityMatcher(),
       planBuilder: new DeterministicPlanBuilder(),
       planValidator: new DeterministicPlanValidator(),
+      simulator: new DeterministicSimulator(),
     };
   }
 
-  reason(intent: Intent): ReasoningResult {
-    const { goalExtractor, constraintChecker, capabilityMatcher, planBuilder, planValidator } =
+  reason(intent: Intent, environment: SimulationEnvironment = EMPTY_ENVIRONMENT): ReasoningResult {
+    const { goalExtractor, constraintChecker, capabilityMatcher, planBuilder, planValidator, simulator } =
       this.components;
 
     const goals = goalExtractor.extractGoals(intent);
@@ -104,6 +114,8 @@ export class DeterministicReasoningEngine {
       };
     }
 
-    return { kind: 'executionPlan', plan };
+    const simulation = simulator.simulate(plan, environment, this.registry);
+
+    return { kind: 'executionPlan', plan, simulation };
   }
 }

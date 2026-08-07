@@ -27,7 +27,10 @@ Plan Builder
 Plan Validator
    │
    ▼
-Execution Plan
+Simulation
+   │
+   ▼
+Execution Plan (+ Simulation)
 ```
 
 Each stage is an independent module in `src/`, owned by this package only.

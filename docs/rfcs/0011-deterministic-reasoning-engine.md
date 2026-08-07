@@ -129,13 +129,41 @@ Every stage has one input, one output, and no side effects.
 - **Authority:** an invalid plan never leaves the engine, regardless of
   which stage produced it.
 
+### 1.6 Simulation
+
+- **Input:** `ExecutionPlan`, `SimulationEnvironment`, `CapabilityRegistry`
+- **Output:** `PlanSimulationResult` — per-step `outcome`,
+  `confidence`, `reasons`, plus `overallConfidence`, `blocked`, `warnings`
+- **Contract:** Simulation predicts what would probably happen if the plan
+  were executed — without executing it. No I/O, no device access, no
+  execution code. Predictions derive only from declared facts:
+  - `CapabilityDescriptor.availability` (RFC-0004): declared
+    `unavailable` → `failure` and `blocked`; `conditional` lowers
+    certainty (may require approval);
+  - `CapabilityDescriptor.requiresResources` vs
+    `SimulationEnvironment.availableResources` (RFC-0005 §5, RFC-0009
+    input): missing resources → `likely_failure`, confidence halved;
+  - `CapabilityDescriptor.reliability` (RFC-0009 Confidence): drives the
+    success spectrum. Above 0.75 → `success`, above 0.5 → `likely_success`,
+    else `likely_failure`. When no reliability is declared the predictor is
+    honest, not optimistic: `unknown` with 0.5 confidence.
+- **Authority:** simulation never blocks execution and never rejects a
+  plan. It reports; the platform decides (RFC-0008). `blocked` flags
+  declared-unavailable capabilities; `warnings` flag missing resources and
+  low-confidence steps.
+- **Eligible for replacement:** interface `Simulator`, with the
+  deterministic reference implementation serving as the floor for any
+  future, richer simulator.
+
 ## 2. Determinism Guarantees
 
 1. **Same input, same output.** Identical `Intent` + `CapabilityRegistry`
-   always produce the identical `ExecutionPlan`.
+   (`+ SimulationEnvironment`) always produce the identical `ExecutionPlan`
+   and `PlanSimulationResult`.
 2. **No hidden state.** Stages hold no memory across calls.
 3. **No external calls.** The engine performs no I/O: no LLM, no network,
-   no device access. It reasons over the Intent and the Registry only.
+   no device access. It reasons over the Intent, the Registry, and the
+   declared Environment only.
 4. **Auditable.** Every decision is a simple rule that can be traced in
    code and exercised by a unit test.
 
@@ -165,6 +193,7 @@ absorb the same Intent and produce Goals the deterministic lexicon cannot.
 | Capability Matcher | `capabilityMatcher.ts` | `CapabilityMatcher` |
 | Plan Builder | `planBuilder.ts` | `PlanBuilder` |
 | Plan Validator | `validator.ts` | `PlanValidator` |
+| Simulation | `simulator.ts` | `Simulator` |
 | Orchestration | `engine.ts` | `DeterministicReasoningEngine` |
 
 - Contracts (Intent, Goal, Constraint, Capability Descriptor, Execution

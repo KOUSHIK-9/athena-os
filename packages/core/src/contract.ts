@@ -43,6 +43,9 @@ export const CapabilityDescriptorSchema = z.object({
   id: z.string().min(1),
   description: z.string(),
   goalKinds: z.array(z.string()),
+  availability: z.enum(['available', 'conditional', 'unavailable']).default('available'),
+  requiresResources: z.array(z.string()).default([]),
+  reliability: z.number().min(0).max(1).optional(),
 });
 
 export type CapabilityDescriptor = z.infer<typeof CapabilityDescriptorSchema>;
@@ -50,6 +53,12 @@ export type CapabilityDescriptor = z.infer<typeof CapabilityDescriptorSchema>;
 export interface CapabilityRegistry {
   capabilities(): readonly CapabilityDescriptor[];
 }
+
+export const SimulationEnvironmentSchema = z.object({
+  availableResources: z.array(z.string()).default([]),
+});
+
+export type SimulationEnvironment = z.infer<typeof SimulationEnvironmentSchema>;
 
 export const PlanStepSchema = z.object({
   id: z.string().min(1),
