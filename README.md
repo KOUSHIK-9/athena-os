@@ -133,6 +133,8 @@ Releases are tagged milestones, not just versions:
 
 ## Documentation
 
+- [Contributing](CONTRIBUTING.md)
+- [Development Environment & Contributor Guide](docs/guides/development-environment.md)
 - [Engineering Principles](ENGINEERING_PRINCIPLES.md)
 - [Architecture Overview](docs/architecture/README.md)
 - [Architecture Decision Records](docs/adr/)
