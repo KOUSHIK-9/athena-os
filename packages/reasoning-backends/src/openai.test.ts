@@ -190,6 +190,33 @@ describe('parseGoalsJson (extraction edge cases)', () => {
   });
 });
 
+describe('parseAssistantResult (provider → content + usage)', () => {
+  it('extracts content and usage from a realistic OpenAI body', () => {
+    const result = parseAssistantResult(
+      JSON.stringify({
+        choices: [{ message: { role: 'assistant', content: '{"goals":[]}' } }],
+        usage: { prompt_tokens: 42, completion_tokens: 7, total_tokens: 49 },
+      })
+    );
+    expect(result.content).toBe('{"goals":[]}');
+    expect(result.usage).toEqual({ promptTokens: 42, completionTokens: 7 });
+  });
+
+  it('returns no usage when the endpoint omits it', () => {
+    const result = parseAssistantResult(
+      JSON.stringify({ choices: [{ message: { content: 'x' } }] })
+    );
+    expect(result.content).toBe('x');
+    expect(result.usage).toBeUndefined();
+  });
+
+  it('returns the raw body verbatim when it is not JSON', () => {
+    const result = parseAssistantResult('plain text response');
+    expect(result.content).toBe('plain text response');
+    expect(result.usage).toEqual({ promptTokens: 0, completionTokens: 0 });
+  });
+});
+
 function runConformanceWith(
   client: OpenAIModelClient,
   _registry: CapabilityRegistry

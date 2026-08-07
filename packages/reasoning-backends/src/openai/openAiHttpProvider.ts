@@ -61,7 +61,9 @@ main();
 
 const ASSISTANT_BODY_SCHEMA = z.object({
   choices: z
-    .array(z.object({ message: z.object({ content: z.string().optional() }).optional() }).optional())
+    .array(
+      z.object({ message: z.object({ content: z.string().optional() }).optional() }).optional()
+    )
     .optional(),
   usage: z
     .object({ prompt_tokens: z.number().optional(), completion_tokens: z.number().optional() })
