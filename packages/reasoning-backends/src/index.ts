@@ -4,4 +4,7 @@ export type { ConformanceScenario, ConformanceLayer } from './conformance/scenar
 export { parityScenarios } from './conformance/fixtures/parity.js';
 export { behavioralScenarios } from './conformance/fixtures/behavioral.js';
 export { DeterministicReasoningBackend } from './deterministic/index.js';
+export { LlmReasoningBackend } from './llm/LlmReasoningBackend.js';
+export type { ModelClient, ExtractedGoal, ModelExtraction } from './llm/modelClient.js';
+export { StubModelClient } from './llm/stubModelClient.js';
 export type { ReasoningBackend, ReasoningBackendResult } from '@athena-os/reasoning';

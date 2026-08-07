@@ -69,19 +69,23 @@ reasoning engine complete.
   Executable Plan` with **no LLM**.
 - `packages/reasoning` reference implementation; 64 tests; 9 executable
   example scenarios; architecture check PASS.
-- RFC-0012: Reasoning Backend Contract & Conformance (**in progress**) — PR 1
-  (contract + conformance harness + parity/behavioral fixtures) and PR 2
-  (backend integration) are landed: the engine is now backend-agnostic
-  (`ReasoningEngine` accepts any `ReasoningBackend`), and
-  `DeterministicReasoningBackend` is the certified reference implementation
-  (reproduces every parity fixture exactly). PR 3 — the LLM backend — is
-  planned. The validator stays the authority; the LLM is never trusted,
-  only validated.
+- RFC-0012: Reasoning Backend Contract & Conformance (**implemented**) — all
+  three stages landed: PR 1 contract + conformance harness (parity and
+  behavioral fixtures), PR 2 backend integration (the engine's
+  `ReasoningEngine` is backend-agnostic; `DeterministicReasoningBackend` is
+  the certified reference), PR 3 the first model-backed backend
+  (`LlmReasoningBackend` + the `ModelClient` port, certified offline with
+  `StubModelClient` — no API, no keys). Both backends reproduce the 5
+  parity fixtures exactly; the LLM backend additionally passes the 2
+  behavioral canons. The validator stays the authority; the model is never
+  trusted, only validated.
 - Both backends implement RFC-0009; the Execution Plan remains the stable
   contract.
 
-*This phase has proven:* the architecture is sufficient independently of any
-model. What remains is the model backend itself.
+*This phase has proven:* models are replaceable — protocols are not. The
+architecture is complete independently of any model; a real provider
+(GPT/Claude/Gemini) implements the `ModelClient` port behind the same
+contract.
 
 ## Phase 5 — Memory
 
@@ -119,6 +123,7 @@ Every feature must answer before any code is written:
 
 **Phase 4 — Cognition**
 
-**Current Objective:** Complete the LLM Reasoning Backend (RFC-0012) behind
-the deterministic pipeline — the deterministic engine is done; the model
-backend implements RFC-0009 and never bypasses the validator.
+**Current Objective:** RFC-0011 and RFC-0012 are both complete — the
+deterministic protocol and the backend contract + conformance, with the
+model-backed backend behind the `ModelClient` port. Next: a real provider
+adapter (GPT/Claude/Gemini) implementing that port, and Phase 5 (Memory).

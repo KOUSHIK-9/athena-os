@@ -147,18 +147,24 @@ plan, or it does not conform.
 | Engine wiring (ReasoningEngine, backend-agnostic) | `@athena-os/reasoning/src/engine.ts` |
 | Deterministic candidate (stages 1–4) | `@athena-os/reasoning/src/deterministicBackend.ts` |
 | Reference backend namespace | `deterministic/index.ts` (adopts the above) |
+| ModelClient port | `llm/modelClient.ts` |
+| LLM backend (model → canonical assembly) | `llm/LlmReasoningBackend.ts` |
+| Offline model stand-in | `llm/stubModelClient.ts` |
 | Scenario type | `conformance/scenario.ts` |
 | Harness (runScenario/runConformance/runParity) | `conformance/harness.ts` |
 | Parity fixtures | `conformance/fixtures/parity.ts` |
 | Behavioral fixtures | `conformance/fixtures/behavioral.ts` |
 
-- Status of implementation: PR 1 (contract + conformance harness + fixtures)
-  and PR 2 (backend integration) are landed. The engine's
-  `ReasoningEngine` accepts any `ReasoningBackend`; the reference is
-  `DeterministicReasoningBackend`, certified against the parity fixtures by
-  `runConformance`. No model or API key is involved anywhere — the harness
-  and fixtures are the entire contract (RFC-0012 staged implementation:
-  PR 3 LLM backend remains).
+- Status of implementation: all three stages are landed. PR 1 (contract +
+  conformance harness + fixtures), PR 2 (backend integration — the engine's
+  `ReasoningEngine` accepts any `ReasoningBackend`), and PR 3 (the first
+  model-backed backend). `LlmReasoningBackend` owns only the open-ended
+  semantics — goal extraction and clarification — through the `ModelClient`
+  port; everything downstream (constraint checking, capability selection,
+  plan building) is the canonical assembly, so the backend is certified by
+  the same exact-equality suite as the deterministic reference. The suite
+  runs against the in-repo `StubModelClient`: no API, no keys, fully
+  hermetic. A real provider (GPT/Claude/Gemini) later implements the port.
 
 ## Conformance
 
