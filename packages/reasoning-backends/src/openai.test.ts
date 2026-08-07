@@ -3,6 +3,7 @@ import type { CapabilityRegistry, Intent } from '@athena-os/core';
 import { LlmReasoningBackend } from './llm/LlmReasoningBackend.js';
 import type { ChatCompletionRequest } from './openai/chatCompletionProvider.js';
 import { OpenAIError } from './openai/openAiHttpProvider.js';
+import { parseAssistantResult } from './openai/openAiHttpProvider.js';
 import { openAIConfigFromEnv, parseOpenAIConfig } from './openai/openAiConfig.js';
 import { OpenAIModelClient, parseGoalsJson } from './openai/openAiModelClient.js';
 
@@ -28,9 +29,9 @@ function makeClient(provider: (request: ChatCompletionRequest) => string): {
   const calls: ChatCompletionRequest[] = [];
   const client = new OpenAIModelClient(TEST_CONFIG, {
     id: 'fake-provider',
-    complete(request: ChatCompletionRequest): string {
+    complete(request: ChatCompletionRequest): { content: string } {
       calls.push(request);
-      return provider(request);
+      return { content: provider(request) };
     },
   });
   return { client, backend: new LlmReasoningBackend(client), calls };
@@ -116,7 +117,7 @@ describe('OpenAIModelClient (RFC-0012, PR 3)', () => {
   it('rejects non-2xx responses from the transport as a typed OpenAIError', () => {
     const failingProvider = {
       id: 'fake-provider',
-      complete(): string {
+      complete(): { content: string } {
         throw new OpenAIError('API', 'OpenAI API error (HTTP 401): bad key');
       },
     };

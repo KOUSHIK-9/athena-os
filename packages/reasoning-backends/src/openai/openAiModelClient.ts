@@ -54,7 +54,7 @@ export class OpenAIModelClient implements ModelClient {
         model: this.config.model,
         messages,
         temperature: 0,
-      });
+      }).content;
     } catch (error) {
       if (error instanceof OpenAIError) {
         throw error;

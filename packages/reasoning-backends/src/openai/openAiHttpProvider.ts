@@ -1,6 +1,12 @@
 import { execFileSync } from 'node:child_process';
+import { z } from 'zod';
 import type { OpenAIConfig } from './openAiConfig.js';
-import type { ChatCompletionProvider, ChatCompletionRequest } from './chatCompletionProvider.js';
+import type {
+  ChatCompletionProvider,
+  ChatCompletionRequest,
+  ChatCompletionResult,
+  ChatCompletionUsage,
+} from './chatCompletionProvider.js';
 
 /**
  * OpenAI-compatible HTTP transport for the `ChatCompletionProvider` seam.
@@ -53,6 +59,17 @@ const main = async () => {
 main();
 `;
 
+const ASSISTANT_BODY_SCHEMA = z.object({
+  choices: z
+    .array(z.object({ message: z.object({ content: z.string().optional() }).optional() }).optional())
+    .optional(),
+  usage: z
+    .object({ prompt_tokens: z.number().optional(), completion_tokens: z.number().optional() })
+    .optional(),
+});
+
+const ZERO_USAGE: ChatCompletionUsage = { promptTokens: 0, completionTokens: 0 };
+
 export class OpenAIError extends Error {
   readonly code: string;
   constructor(code: string, message: string) {
@@ -67,7 +84,7 @@ export class OpenAICompatibleHttpProvider implements ChatCompletionProvider {
 
   constructor(private readonly config: OpenAIConfig) {}
 
-  complete(request: ChatCompletionRequest): string {
+  complete(request: ChatCompletionRequest): ChatCompletionResult {
     const payload = {
       url: `${this.config.baseUrl.replace(/\/+$/, '')}/chat/completions`,
       apiKey: this.config.apiKey,
@@ -110,16 +127,27 @@ export class OpenAICompatibleHttpProvider implements ChatCompletionProvider {
       );
     }
 
-    return extractAssistantContent(envelope.content ?? '');
+    return parseAssistantResult(envelope.content ?? '');
   }
 }
 
-function extractAssistantContent(raw: string): string {
-  let parsed: { choices?: Array<{ message?: { content?: string } }> };
+export function parseAssistantResult(raw: string): ChatCompletionResult {
+  let body: z.infer<typeof ASSISTANT_BODY_SCHEMA>;
   try {
-    parsed = JSON.parse(raw);
+    body = ASSISTANT_BODY_SCHEMA.parse(JSON.parse(raw));
   } catch {
-    return raw;
+    return { content: raw, usage: ZERO_USAGE };
   }
-  return parsed.choices?.[0]?.message?.content ?? raw;
+
+  const content = body.choices?.[0]?.message?.content ?? raw;
+
+  let usage: ChatCompletionUsage | undefined;
+  if (body.usage) {
+    usage = {
+      promptTokens: body.usage.prompt_tokens ?? 0,
+      completionTokens: body.usage.completion_tokens ?? 0,
+    };
+  }
+
+  return usage ? { content, usage } : { content };
 }

@@ -19,12 +19,29 @@ export interface ChatCompletionRequest {
   temperature: number;
 }
 
+export interface ChatCompletionUsage {
+  promptTokens: number;
+  completionTokens: number;
+}
+
+export interface ChatCompletionResult {
+  content: string;
+  /**
+   * Token accounting for the call, when the provider reports it. Absent
+   * when the transport never saw a usage payload (e.g. a test fake or a
+   * non-conforming endpoint) — benchmark tools treat it as `0/0`, never a
+   * fabricated number.
+   */
+  usage?: ChatCompletionUsage;
+}
+
 export interface ChatCompletionProvider {
   readonly id: string;
   /**
-   * Returns the assistant message content for a Chat Completions request.
-   * Synchronous by design (see module doc) — the default implementation is
-   * an OpenAI-compatible HTTP provider; tests inject a fake.
+   * Returns the assistant message content for a Chat Completions request,
+   * plus token usage when the API reported it. Synchronous by design (see
+   * module doc) — the default implementation is an OpenAI-compatible HTTP
+   * transport; tests inject a fake.
    */
-  complete(request: ChatCompletionRequest): string;
+  complete(request: ChatCompletionRequest): ChatCompletionResult;
 }
