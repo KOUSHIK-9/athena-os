@@ -427,22 +427,38 @@ program
 
 program
   .command('tree')
-  .description('Print the accessibility tree')
-  .action(async () => {
-    const spinner = ora('Getting accessibility tree...').start();
+  .alias('inspect')
+  .description('Inspect the current screen as a semantic UI model (human-readable)')
+  .option('--json', 'Emit the full semantic model as JSON')
+  .action(async (opts: CommandOpts) => {
+    const spinner = ora('Building semantic UI model...').start();
 
     try {
       const result = await withClient('tree', (client) => client.callTool('getTree'));
 
       spinner.stop();
 
-      if (result.success && result.metadata?.tree) {
-        console.log(JSON.stringify(result.metadata.tree, null, 2));
+      if (result.success && result.metadata?.model) {
+        if (opts.json) {
+          emitJson(result.metadata.model);
+          return;
+        }
+        const rendered = result.rendered;
+        if (rendered) {
+          console.log(rendered);
+          return;
+        }
+        const model = result.metadata.model as { summary?: Record<string, unknown> };
+        if (model.summary) {
+          emitJson(model.summary);
+          return;
+        }
+        emitJson(result.metadata.model);
       } else {
-        console.error(chalk.red(result.error ?? 'Failed to get tree'));
+        console.error(chalk.red(result.error ?? 'Failed to inspect screen'));
       }
     } catch (error) {
-      spinner.fail('Tree failed');
+      spinner.fail('Inspect failed');
       console.error(chalk.red(error instanceof Error ? error.message : String(error)));
       process.exit(1);
     }

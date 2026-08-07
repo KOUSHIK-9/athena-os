@@ -27,12 +27,13 @@ export default defineConfig({
       },
     },
   },
-  resolve: {
+    resolve: {
     alias: {
       "@athena-os/executor": path.resolve(__dirname, "packages/executor/src"),
       "@athena-os/shared": path.resolve(__dirname, "packages/shared/src"),
       "@athena-os/sdk": path.resolve(__dirname, "packages/sdk/src"),
       "@athena-os/driver": path.resolve(__dirname, "packages/driver/src"),
+      "@athena-os/understanding": path.resolve(__dirname, "packages/understanding/src"),
       "@athena-os/iphone-agent": path.resolve(__dirname, "agents/iphone-agent/src"),
       "@athena-os/mcp-server": path.resolve(__dirname, "servers/mcp-server/src"),
     },

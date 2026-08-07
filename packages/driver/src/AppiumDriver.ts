@@ -1,6 +1,7 @@
 import type { SessionConfig, DeviceInfo, Selector } from '@athena-os/core';
 import type { Driver, UITree, DriverCapabilities } from './Driver.js';
 import { resolveSelector, createFallbackSelectors } from './selectors.js';
+import { parseAccessibleXML } from './xml.js';
 import { AppiumDriverError, AppiumSessionError, AppiumElementNotFoundError } from './errors.js';
 import { createLogger } from '@athena-os/shared';
 import { sleep, retry } from '@athena-os/shared';
@@ -313,13 +314,8 @@ export class AppiumDriver implements Driver {
     );
   }
 
-  private parseUITree(_source: string): UITree {
-    // Basic XML to UITree parsing
-    // In production, use a proper XML parser
-    return {
-      type: 'XCUIElementTypeApplication',
-      children: [],
-    };
+  private parseUITree(source: string): UITree {
+    return parseAccessibleXML(source);
   }
 
   private async getPlatformVersion(): Promise<string> {

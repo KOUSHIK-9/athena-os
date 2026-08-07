@@ -28,7 +28,8 @@
     "@athena-os/executor": "workspace:*",
     "@athena-os/driver": "workspace:*",
     "@athena-os/shared": "workspace:*",
-    "@athena-os/core": "workspace:*"
+    "@athena-os/core": "workspace:*",
+    "@athena-os/understanding": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "catalog:",

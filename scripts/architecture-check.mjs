@@ -20,6 +20,7 @@ const PACKAGES = {
   'packages/executor': '@athena-os/executor',
   'packages/sdk': '@athena-os/sdk',
   'packages/shared': '@athena-os/shared',
+  'packages/understanding': '@athena-os/understanding',
   'agents/iphone-agent': '@athena-os/iphone-agent',
   'servers/mcp-server': '@athena-os/mcp-server',
   'apps/cli': '@athena-os/cli',
@@ -28,6 +29,7 @@ const PACKAGES = {
 const LAYERS = {
   '@athena-os/core': 0,
   '@athena-os/driver': 1,
+  '@athena-os/understanding': 1,
   '@athena-os/executor': 2,
   '@athena-os/iphone-agent': 3,
   '@athena-os/sdk': 4,
@@ -42,6 +44,7 @@ const APPIUM_FORBIDDEN = new Set([
   '@athena-os/executor',
   '@athena-os/shared',
   '@athena-os/sdk',
+  '@athena-os/understanding',
   '@athena-os/mcp-server',
   '@athena-os/cli',
 ]);

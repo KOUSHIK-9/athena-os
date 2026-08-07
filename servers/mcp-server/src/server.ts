@@ -20,6 +20,8 @@ import {
 import { verifyWDA } from '@athena-os/iphone-agent';
 import { discoverDevices } from '@athena-os/iphone-agent';
 import { resolveAppNameToBundleId } from '@athena-os/iphone-agent';
+import { renderSemanticTree } from '@athena-os/understanding';
+import type { SemanticModel } from '@athena-os/core';
 
 const logger = createLogger('MCPServer');
 
@@ -150,7 +152,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
     {
       name: 'getTree',
-      description: 'Get the accessibility tree of the current screen',
+      description:
+        'Inspect the current screen as a semantic UI model (roles, labels, confidence). "rendered" is a human-readable tree; the JSON model lives under metadata.model.',
       inputSchema: { type: 'object', properties: {} },
     },
     {
@@ -334,10 +337,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const executor = mcpSessionManager.getExecutor();
         const result = await executor.execute({
           type: 'getTree',
-          description: 'Get accessibility tree',
+          description: 'Get semantic UI model',
         });
+
+        const resultObj = result as {
+          metadata?: { model?: SemanticModel };
+        };
+        const model = resultObj.metadata?.model;
+        const rendered = model?.root ? renderSemanticTree(model) : undefined;
+
         return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({ ...result, rendered }, null, 2),
+            },
+          ],
         };
       }
 

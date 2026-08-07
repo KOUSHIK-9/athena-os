@@ -4,6 +4,7 @@ import {
   type ActionResult,
   type ExecutionMetadata,
   type VerificationResult,
+  type SemanticModel,
   createVerificationResult,
   createExecutionMetadata,
   assertTransition,
@@ -12,6 +13,7 @@ import { sessionManager } from './session.js';
 import { selectDevice, verifyDeviceReady } from './device.js';
 import { verifyWDA } from './wda.js';
 import { saveAndVerifyScreenshot } from './screenshot.js';
+import { buildSemanticModel } from '@athena-os/understanding';
 import {
   createLogger,
   DeviceNotReadyError,
@@ -262,7 +264,8 @@ export class iPhoneExecutor implements Executor {
 
       case 'getTree': {
         const tree = await driver.getUITree();
-        return { metadata: { tree } };
+        const model = buildSemanticModel(tree);
+        return { metadata: { model, tree } };
       }
 
       case 'pressHome':
@@ -338,11 +341,16 @@ export class iPhoneExecutor implements Executor {
       }
 
       case 'getTree': {
-        const tree = (finalized?.payload?.metadata?.tree ?? null) as
-          { nodes: unknown[] } | null | undefined;
-        const verified = Boolean(tree && Array.isArray(tree.nodes) && tree.nodes.length > 0);
+        const model = (finalized?.payload?.metadata?.model ?? null) as
+          Partial<SemanticModel> | null | undefined;
+        const verified = Boolean(
+          model?.root &&
+          typeof model.summary?.elementCount === 'number' &&
+          model.summary.elementCount > 0
+        );
         return createVerificationResult('tree-has-nodes', verified, {
-          nodeCount: tree?.nodes?.length,
+          elementCount: model?.summary?.elementCount,
+          score: model?.score,
         });
       }
 
