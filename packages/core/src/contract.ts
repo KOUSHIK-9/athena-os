@@ -78,3 +78,28 @@ export const ExecutionPlanSchema = z.object({
 });
 
 export type ExecutionPlan = z.infer<typeof ExecutionPlanSchema>;
+
+export const ExecutionGraphNodeSchema = z.object({
+  stepId: z.string().min(1),
+  order: z.number().int().min(0),
+  level: z.number().int().min(0),
+});
+
+export type ExecutionGraphNode = z.infer<typeof ExecutionGraphNodeSchema>;
+
+export const ExecutionGraphEdgeSchema = z.object({
+  from: z.string().min(1),
+  to: z.string().min(1),
+});
+
+export type ExecutionGraphEdge = z.infer<typeof ExecutionGraphEdgeSchema>;
+
+export const ExecutionGraphSchema = z.object({
+  planId: z.string().min(1),
+  intentId: z.string().min(1),
+  nodes: z.array(ExecutionGraphNodeSchema),
+  edges: z.array(ExecutionGraphEdgeSchema),
+  parallelSets: z.array(z.array(z.string().min(1))),
+});
+
+export type ExecutionGraph = z.infer<typeof ExecutionGraphSchema>;

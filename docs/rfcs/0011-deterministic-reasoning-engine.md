@@ -60,7 +60,13 @@ Plan Builder
 Plan Validator
    │
    ▼
-Execution Plan
+Simulation
+   │
+   ▼
+Execution Graph Builder
+   │
+   ▼
+Executable Plan (plan + simulation + graph)
 ```
 
 ## 1. Stage Contracts
@@ -155,12 +161,36 @@ Every stage has one input, one output, and no side effects.
   deterministic reference implementation serving as the floor for any
   future, richer simulator.
 
+### 1.7 Execution Graph Builder
+
+- **Input:** `ExecutionPlan` (validated)
+- **Output:** `ExecutionGraph` — ordered `nodes` (each with a global
+  `order` and `level`), `edges` (`from` → `to` dependencies), and
+  `parallelSets` (step ids grouped by level)
+- **Contract:** Computes the dependency graph the plan already declares and
+  renders it for execution. It is deliberately boring: it does **not**
+  optimize, simulate, validate, or execute. Given a validated plan it:
+  - resolves dependency order (topological),
+  - annotates every step with a `level` (its longest dependency chain),
+  - groups steps by level into `parallelSets` — steps in the same set
+    share no dependency path and may execute together (RFC-0006 §8,
+    Execution Semantics),
+  - preserves `dependsOn` as explicit edges.
+- **Determinism:** steps are processed in declaration order, so identical
+  plans always yield identical graphs. The builder reports exactly what the
+  plan declares — it never invents parallelism.
+- **Authority:** the graph is derived post-validation. If the plan is
+  invalid, the validator never lets it reach this stage.
+- **Eligible for replacement:** interface `ExecutionGraphBuilder`. No
+  planning decisions (selection, ordering preferences, soft constraints)
+  live here by design — that is the Plan Optimizer's future concern.
+
 ## 2. Determinism Guarantees
 
 1. **Same input, same output.** Identical `Intent` + `CapabilityRegistry`
-   (`+ SimulationEnvironment`) always produce the identical `ExecutionPlan`
-   and `PlanSimulationResult`.
-2. **No hidden state.** Stages hold no memory across calls.
+   (`+ SimulationEnvironment`) always produce the identical `ExecutionPlan`,
+   `PlanSimulationResult`, and `ExecutionGraph`.
+2. **No internal state.** Stages hold no memory across calls.
 3. **No external calls.** The engine performs no I/O: no LLM, no network,
    no device access. It reasons over the Intent, the Registry, and the
    declared Environment only.
@@ -194,6 +224,7 @@ absorb the same Intent and produce Goals the deterministic lexicon cannot.
 | Plan Builder | `planBuilder.ts` | `PlanBuilder` |
 | Plan Validator | `validator.ts` | `PlanValidator` |
 | Simulation | `simulator.ts` | `Simulator` |
+| Execution Graph Builder | `executionGraphBuilder.ts` | `ExecutionGraphBuilder` |
 | Orchestration | `engine.ts` | `DeterministicReasoningEngine` |
 
 - Contracts (Intent, Goal, Constraint, Capability Descriptor, Execution

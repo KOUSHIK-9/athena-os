@@ -1,5 +1,6 @@
 import type {
   CapabilityRegistry,
+  ExecutionGraph,
   ExecutionPlan,
   Intent,
   SimulationEnvironment,
@@ -20,6 +21,10 @@ import {
   type PlanValidator,
 } from './validator.js';
 import { DeterministicSimulator, type PlanSimulationResult } from './simulator.js';
+import {
+  DeterministicExecutionGraphBuilder,
+  type ExecutionGraphBuilder,
+} from './executionGraphBuilder.js';
 
 const EMPTY_ENVIRONMENT: SimulationEnvironment = { availableResources: [] };
 
@@ -28,6 +33,7 @@ export type ReasoningResult =
       kind: 'executionPlan';
       plan: ExecutionPlan;
       simulation: PlanSimulationResult;
+      executionGraph: ExecutionGraph;
     }
   | { kind: 'clarificationRequired'; reason: string }
   | { kind: 'rejected'; reasons: string[] };
@@ -39,12 +45,13 @@ export interface EngineComponents {
   planBuilder: PlanBuilder;
   planValidator: PlanValidator;
   simulator: DeterministicSimulator;
+  executionGraphBuilder: ExecutionGraphBuilder;
 }
 
 /**
  * RFC-0011 Deterministic Reasoning Engine.
  *
- * Composes the six pipeline stages into a single `reason` entry point.
+ * Composes the seven pipeline stages into a single `reason` entry point.
  * Stages are injected so any of them can later be replaced by an
  * RFC-0012 (LLM) implementation behind the same interface.
  */
@@ -59,12 +66,20 @@ export class DeterministicReasoningEngine {
       planBuilder: new DeterministicPlanBuilder(),
       planValidator: new DeterministicPlanValidator(),
       simulator: new DeterministicSimulator(),
+      executionGraphBuilder: new DeterministicExecutionGraphBuilder(),
     };
   }
 
   reason(intent: Intent, environment: SimulationEnvironment = EMPTY_ENVIRONMENT): ReasoningResult {
-    const { goalExtractor, constraintChecker, capabilityMatcher, planBuilder, planValidator, simulator } =
-      this.components;
+    const {
+      goalExtractor,
+      constraintChecker,
+      capabilityMatcher,
+      planBuilder,
+      planValidator,
+      simulator,
+      executionGraphBuilder,
+    } = this.components;
 
     const goals = goalExtractor.extractGoals(intent);
     if (goals.length === 0) {
@@ -115,7 +130,8 @@ export class DeterministicReasoningEngine {
     }
 
     const simulation = simulator.simulate(plan, environment, this.registry);
+    const executionGraph = executionGraphBuilder.buildExecutionGraph(plan);
 
-    return { kind: 'executionPlan', plan, simulation };
+    return { kind: 'executionPlan', plan, simulation, executionGraph };
   }
 }

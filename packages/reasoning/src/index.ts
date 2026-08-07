@@ -7,6 +7,8 @@ export type {
   StepPrediction,
   PredictedOutcome,
 } from './simulator.js';
+export { DeterministicExecutionGraphBuilder } from './executionGraphBuilder.js';
+export type { ExecutionGraphBuilder } from './executionGraphBuilder.js';
 export { DeterministicGoalExtractor } from './goalExtractor.js';
 export type { GoalExtractor } from './goalExtractor.js';
 export { DeterministicConstraintChecker } from './constraintChecker.js';
