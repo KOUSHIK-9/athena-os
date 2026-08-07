@@ -82,16 +82,6 @@ When a milestone is declared complete and a baseline version is tagged (e.g. `v0
 - No baseline architecture/protocol changes while it remains a baseline. A baseline can later be superseded (a new baseline), but that is a deliberate, versioned decision — never an ad hoc rewrite.
 - The baseline is the foundation: future work extends it.
 
-## 10. Stable Milestones Are Baselines, Not Redesign Targets
-
-When a milestone is declared complete and a baseline version is tagged (e.g. `v0.3.0-alpha.1`), it becomes a **dependency**, not a redesign target:
-
-- New capabilities build on the baseline; they do not replace its contracts.
-- No baseline architecture/protocol changes while it remains a baseline. A baseline can later be superseded (a new baseline), but that is a deliberate, versioned decision — never an ad hoc rewrite.
-- The baseline is the foundation: future work extends it.
-
-This is how mature platforms evolve: layers of stable baselines, each extending the last, never undermining it.
-
 ## 11. One Concept. One Canonical Definition.
 
 Every concept has exactly one canonical definition, owned by a single RFC (or a single module in code). Everywhere else **references** it; nowhere else **redefines** it.
@@ -107,3 +97,16 @@ This discipline keeps the RFC series and the codebase coherent as Athena grows.
 The Execution Plan is the stable interface between reasoning and execution. Everything above it (reasoning engines, models) may evolve; everything below it (capabilities, devices, drivers) may evolve; the contract itself is versioned, portable, and held immutable by the platform (see RFC-0009).
 
 > **Status: proposal.** Principles earn their place by being lived in over time. Ratify or drop this at the next milestone review.
+
+## 13. Implementation RFCs Include a Reference Implementation Section
+
+Every RFC that describes something that will be implemented (an engine, a
+protocol, a model) must eventually carry a **Reference Implementation**
+section pointing at the code that implements it (RFC-0011 was the first).
+
+- The RFC remains the stable, canonical specification.
+- The reference implementation lives in `docs/reference-implementations/`
+  and explains *why* each module exists, how it maps to the RFC, design
+  decisions, known limitations, and future extensions.
+- It keeps RFCs stable while implementation guidance evolves — and it is
+  what turns a proposal into a proof.
