@@ -82,4 +82,28 @@ When a milestone is declared complete and a baseline version is tagged (e.g. `v0
 - No baseline architecture/protocol changes while it remains a baseline. A baseline can later be superseded (a new baseline), but that is a deliberate, versioned decision — never an ad hoc rewrite.
 - The baseline is the foundation: future work extends it.
 
+## 10. Stable Milestones Are Baselines, Not Redesign Targets
+
+When a milestone is declared complete and a baseline version is tagged (e.g. `v0.3.0-alpha.1`), it becomes a **dependency**, not a redesign target:
+
+- New capabilities build on the baseline; they do not replace its contracts.
+- No baseline architecture/protocol changes while it remains a baseline. A baseline can later be superseded (a new baseline), but that is a deliberate, versioned decision — never an ad hoc rewrite.
+- The baseline is the foundation: future work extends it.
+
 This is how mature platforms evolve: layers of stable baselines, each extending the last, never undermining it.
+
+## 11. One Concept. One Canonical Definition.
+
+Every concept has exactly one canonical definition, owned by a single RFC (or a single module in code). Everywhere else **references** it; nowhere else **redefines** it.
+
+- RFC-0005 defines concepts. RFC-0006 defines plan behavior. RFC-0007 defines governance. RFC-0008 defines approval protocol. RFC-0009 defines the reasoning contract. No RFC copies another's definitions.
+- In code, the same rule holds: one owner per contract (package/type). Duplication is a bug.
+- If you find yourself copying a definition from one RFC (or module) into another, stop: replace the copy with a reference. Duplicated definitions are a smell; they will drift and lie.
+
+This discipline keeps the RFC series and the codebase coherent as Athena grows.
+
+## 12. The Contract Between Intent and Execution Is Permanent *(proposal — not yet ratified)*
+
+The Execution Plan is the stable interface between reasoning and execution. Everything above it (reasoning engines, models) may evolve; everything below it (capabilities, devices, drivers) may evolve; the contract itself is versioned, portable, and held immutable by the platform (see RFC-0009).
+
+> **Status: proposal.** Principles earn their place by being lived in over time. Ratify or drop this at the next milestone review.

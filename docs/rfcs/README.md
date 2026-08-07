@@ -16,5 +16,10 @@ capturing proposals and their status through to acceptance.
 |-----|-------|--------|
 | [0001](0001-execution-protocol.md) | The Athena Execution Protocol (Action Pipeline) | Accepted |
 | [0002](0002-ui-semantic-model.md) | UI Semantic Model (Understanding Engine) | Accepted |
-| [0003](0003-planner.md) | The Planner Engine | Draft |
+| [0003](0003-planner.md) | The Planner Engine | **Superseded by RFC-0005** |
 | [0004](0004-capability-paradigm.md) | The Capability Paradigm | Accepted |
+| [0005](0005-intent-model.md) | The Intent Model | Accepted |
+| [0006](0006-execution-plan-model.md) | The Execution Plan Model | Accepted |
+| [0007](0007-constraint-governance-model.md) | The Constraint and Governance Model | Accepted |
+| [0008](0008-decision-point-protocol.md) | The Decision Point Protocol | Accepted |
+| [0009](0009-reasoning-engine-interface.md) | The Contract Between Intent and Execution | Accepted |
