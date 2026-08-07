@@ -20,7 +20,7 @@ import {
 import { verifyWDA } from '@athena-os/iphone-agent';
 import { discoverDevices } from '@athena-os/iphone-agent';
 import { resolveAppNameToBundleId } from '@athena-os/iphone-agent';
-import { renderSemanticTree } from '@athena-os/understanding';
+import { renderSemanticTree, selectFromModel } from '@athena-os/understanding';
 import type { SemanticModel } from '@athena-os/core';
 
 const logger = createLogger('MCPServer');
@@ -155,6 +155,27 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       description:
         'Inspect the current screen as a semantic UI model (roles, labels, confidence). "rendered" is a human-readable tree; the JSON model lives under metadata.model.',
       inputSchema: { type: 'object', properties: {} },
+    },
+    {
+      name: 'find',
+      description:
+        'Resolve a UI element by human-readable label and return a driver selector plus confidence (Milestone 2D semantic resolution).',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          label: { type: 'string', description: 'Element label to find (e.g. "Airplane Mode")' },
+          role: {
+            type: 'string',
+            description: 'Optional role filter (button, switch, text_field, ...)',
+          },
+          enabledOnly: { type: 'boolean', description: 'Only match enabled elements' },
+          minConfidence: {
+            type: 'number',
+            description: 'Minimum resolution confidence in [0,1]',
+          },
+        },
+        required: ['label'],
+      },
     },
     {
       name: 'pressHome',
@@ -351,6 +372,71 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: 'text',
               text: JSON.stringify({ ...result, rendered }, null, 2),
+            },
+          ],
+        };
+      }
+
+      case 'find': {
+        const label = (args as { label?: string })?.label ?? '';
+        const role = (args as { role?: string })?.role;
+        const enabledOnly = (args as { enabledOnly?: boolean })?.enabledOnly ?? false;
+        const minConfidence = (args as { minConfidence?: unknown })?.minConfidence as
+          number | undefined;
+
+        if (!label.trim()) {
+          throw new Error('find requires a label');
+        }
+
+        const executor = mcpSessionManager.getExecutor();
+        const treeResult = await executor.execute({
+          type: 'getTree',
+          description: 'Gather semantic model for find',
+        });
+
+        const model = (treeResult as { metadata?: { model?: SemanticModel } }).metadata?.model;
+
+        if (!model?.root) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({ success: false, error: 'No UI model available' }, null, 2),
+              },
+            ],
+          };
+        }
+
+        const selected = selectFromModel(model, label, {
+          role: role as never,
+          enabledOnly,
+          minConfidence,
+        });
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                selected
+                  ? {
+                      success: true,
+                      label,
+                      selector: selected.selector,
+                      confidence: selected.confidence,
+                      quality: selected.quality,
+                      role: selected.element.role,
+                      enabled: selected.element.enabled,
+                      visible: selected.element.visible,
+                    }
+                  : {
+                      success: false,
+                      label,
+                      error: 'No element matched the requested label',
+                    },
+                null,
+                2
+              ),
             },
           ],
         };

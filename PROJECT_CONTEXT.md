@@ -58,6 +58,21 @@ DeviceInfo, Session, Events, Errors); no other package may define them.
   committed to MCP child process, architecture tests enforced in CI.
 - Architecture Decision Records added under `docs/adr/` (core package,
   MCP boundary, driver abstraction, CLI boundary).
-- Next (Sprint 1 reordered): `athena doctor` → `athena devices` →
-  `athena screenshot` → `athena launch`, implemented on the existing
-  architecture, then env-file + git + CI foundations.
+- Milestone 2B (UI Understanding) green: `packages/understanding` builds a
+  semantic model (roles, labels, confidence) from the accessibility tree and
+  renders it; `athena tree` exposes it; RFC-0002.
+- Milestone 2C (Interaction) green: interactions (`launch`, `terminate`, `tap`,
+  `type`, `swipe`, `home`, `back`, `wait`, `screenshot`, `getTree`) are
+  first-class `Capability`s (`agents/iphone-agent/src/capabilities/`) with
+  validate/execute/verify/telemetry, one independent test per capability, and
+  the executor dispatches through the capability registry.
+- Milestone 2D (Semantic Resolution) green: `selectFromModel` / `resolveElement`
+  / `findByLabel` resolve a UI element from a human-readable label into a
+  driver selector + confidence; exposed as the `athena find` CLI command and
+  the `find` MCP tool.
+
+## Next
+
+- Milestone 3 (Task Execution, deterministic, no GPT): chain capabilities into
+  higher-order plans; end-to-end device verification.
+- Replace remaining "Sprint" naming with Milestone naming as docs refresh.

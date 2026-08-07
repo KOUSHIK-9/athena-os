@@ -15,5 +15,6 @@ capturing proposals and their status through to acceptance.
 | RFC | Title | Status |
 |-----|-------|--------|
 | [0001](0001-execution-protocol.md) | The Athena Execution Protocol (Action Pipeline) | Accepted |
-| [0002](0002-ui-semantic-model.md) | UI Semantic Model (Understanding Engine) | Draft |
+| [0002](0002-ui-semantic-model.md) | UI Semantic Model (Understanding Engine) | Accepted |
 | [0003](0003-planner.md) | The Planner Engine | Draft |
+| [0004](0004-capability-paradigm.md) | The Capability Paradigm | Accepted |

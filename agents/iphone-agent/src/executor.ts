@@ -4,23 +4,20 @@ import {
   type ActionResult,
   type ExecutionMetadata,
   type VerificationResult,
-  type SemanticModel,
-  createVerificationResult,
   createExecutionMetadata,
+  createVerificationResult,
   assertTransition,
 } from '@athena-os/core';
 import { sessionManager } from './session.js';
 import { selectDevice, verifyDeviceReady } from './device.js';
 import { verifyWDA } from './wda.js';
-import { saveAndVerifyScreenshot } from './screenshot.js';
-import { buildSemanticModel } from '@athena-os/understanding';
+import { capabilityFor } from './capabilities/index.js';
+import type { CapabilityRunContext } from './capabilities/types.js';
 import {
   createLogger,
   DeviceNotReadyError,
   toAthenaError,
-  retry,
   sleep,
-  ValidationError,
   generateId,
 } from '@athena-os/shared';
 
@@ -42,16 +39,6 @@ function isRetryableCode(code: string): boolean {
 interface PipelineRun {
   metadata: ExecutionMetadata;
   attempts: number;
-}
-
-interface AttemptPayload {
-  screenshot?: string;
-  metadata?: Record<string, unknown>;
-}
-
-interface FinalizedPayload {
-  payload: AttemptPayload;
-  metadata?: Record<string, unknown>;
 }
 
 export class iPhoneExecutor implements Executor {
@@ -84,17 +71,23 @@ export class iPhoneExecutor implements Executor {
     if (!this.currentSession) {
       throw new Error('Executor not initialized. Call initialize() first.');
     }
+    const sessionConfig = this.sessionConfig;
+    if (!sessionConfig) {
+      throw new Error('Executor not initialized. Call initialize() first.');
+    }
 
-    // 1. Validation
-    this.assertValidAction(action);
+    // 1. Capability-bound validation + driver context
+    const capability = capabilityFor(action.type);
+    capability.validate(action);
 
+    const managed = await sessionManager.getSession(this.currentSession.deviceUdid);
     const requestId = generateId();
     const execution = createExecutionMetadata(requestId, action.type);
     execution.state = 'running';
     execution.sessionId = this.currentSession.id;
     execution.deviceUdid = this.currentSession.deviceUdid;
 
-    const maxRetries = this.sessionConfig?.retries ?? 3;
+    const maxRetries = sessionConfig.retries ?? 3;
     const attempts = maxRetries + 1;
     const run: PipelineRun = { metadata: execution, attempts: 0 };
 
@@ -109,17 +102,17 @@ export class iPhoneExecutor implements Executor {
         this.transition(run, 'retrying');
       }
 
+      const capabilityContext: CapabilityRunContext = {
+        requestId,
+        action,
+        driver: managed.driver,
+        session: this.currentSession,
+        config: sessionConfig,
+      };
+
       try {
-        const payload = await this.executeAttempt(action);
-
-        // 3. Metadata + Save (screenshot pipeline)
-        const finalized =
-          action.type === 'screenshot'
-            ? await this.captureAndSave(payload as { screenshot?: string })
-            : { payload: payload as { screenshot?: string; metadata?: Record<string, unknown> } };
-
-        // 4. Verification
-        const verification = await this.verify(action, finalized);
+        const result = await capability.execute(capabilityContext);
+        const verification = await capability.verify(capabilityContext, result);
         execution.state = verification.verified ? 'succeeded' : 'failed';
 
         const finishedAt = new Date();
@@ -132,8 +125,8 @@ export class iPhoneExecutor implements Executor {
           success: verification.verified,
           action,
           duration: execution.durationMs,
-          screenshot: finalized.payload?.screenshot,
-          metadata: finalized.metadata,
+          screenshot: result.screenshot,
+          metadata: result.metadata,
           error: verification.verified ? undefined : 'Action failed verification',
           requestId,
           state: execution.state,
@@ -186,226 +179,9 @@ export class iPhoneExecutor implements Executor {
     throw new Error(`Unreachable: action pipeline did not terminate for ${action.type}`);
   }
 
-  private assertValidAction(action: Action): void {
-    if (action.type === 'launchApp' && !action.bundleId) {
-      throw new ValidationError(
-        'launchApp requires a bundleId',
-        'bundleId',
-        action.bundleId ?? null
-      );
-    }
-    if (action.type === 'terminateApp' && !action.bundleId) {
-      throw new ValidationError(
-        'terminateApp requires a bundleId',
-        'bundleId',
-        action.bundleId ?? null
-      );
-    }
-    if (action.type === 'tap' && !action.selector) {
-      throw new ValidationError('tap requires a selector', 'selector', null);
-    }
-    if (action.type === 'type' && !action.text) {
-      throw new ValidationError('type requires text', 'text', null);
-    }
-    if (action.type === 'swipe' && !action.selector) {
-      throw new ValidationError('swipe requires a selector', 'selector', null);
-    }
-    if (action.type === 'wait' && (!action.duration || action.duration < 0)) {
-      throw new ValidationError(
-        'wait requires a non-negative duration',
-        'duration',
-        action.duration ?? null
-      );
-    }
-  }
-
   private transition(run: PipelineRun, to: ExecutionMetadata['state']): void {
     assertTransition(run.metadata.state, to);
     run.metadata.state = to;
-  }
-
-  private async executeAttempt(
-    action: Action
-  ): Promise<{ screenshot?: string; metadata?: Record<string, unknown> } | undefined> {
-    let managed;
-    try {
-      managed = await sessionManager.getSession(this.currentSession!.deviceUdid);
-    } catch (error) {
-      throw toAthenaError(error);
-    }
-
-    const driver = managed.driver;
-
-    switch (action.type) {
-      case 'launchApp':
-        await driver.launchApp(action.bundleId!);
-        return undefined;
-
-      case 'terminateApp':
-        await driver.terminateApp(action.bundleId!);
-        return undefined;
-
-      case 'tap':
-        await driver.tap(action.selector!);
-        return undefined;
-
-      case 'type':
-        await driver.type(action.text!, action.selector);
-        return undefined;
-
-      case 'swipe':
-        await driver.swipe(action.selector!, action.direction, action.distance);
-        return undefined;
-
-      case 'screenshot': {
-        const screenshotBuffer = await driver.screenshot();
-        return { screenshot: screenshotBuffer.toString('base64') };
-      }
-
-      case 'getTree': {
-        const tree = await driver.getUITree();
-        const model = buildSemanticModel(tree);
-        return { metadata: { model, tree } };
-      }
-
-      case 'pressHome':
-        await driver.pressHome();
-        return undefined;
-
-      case 'back':
-        await driver.back();
-        return undefined;
-
-      case 'wait':
-        await driver.wait(action.duration);
-        return undefined;
-
-      default: {
-        const maybeAction = action as { type: string };
-        throw new ValidationError(
-          `Unknown action type: ${maybeAction.type}`,
-          'type',
-          maybeAction.type
-        );
-      }
-    }
-  }
-
-  /** Finalize a screenshot: decode, validate, build metadata, save, and verify the file. */
-  private async captureAndSave(payload: AttemptPayload): Promise<FinalizedPayload> {
-    if (!payload.screenshot) {
-      throw toAthenaError(new Error('Screenshot action produced no image data'));
-    }
-
-    const buffer = Buffer.from(payload.screenshot, 'base64');
-    const directory = this.sessionConfig?.screenshotDir ?? 'screenshots';
-    const saved = await saveAndVerifyScreenshot({
-      buffer,
-      directory,
-      device: this.currentSession?.deviceUdid,
-    });
-
-    if (!saved.verified) {
-      logger.warn(
-        { path: saved.metadata.path, ...saved.verificationDetails },
-        'Screenshot file verification failed'
-      );
-    }
-
-    return {
-      payload,
-      metadata: { ...saved.metadata, verified: saved.verified } as unknown as Record<
-        string,
-        unknown
-      >,
-    };
-  }
-
-  /** Per-action verification stage. Every action must be verified, not assumed. */
-  private async verify(action: Action, finalized?: FinalizedPayload): Promise<VerificationResult> {
-    const sessionHealthy = await this.isSessionHealthy();
-
-    switch (action.type) {
-      case 'launchApp':
-        return this.verifyLaunched(action.bundleId!);
-
-      case 'screenshot': {
-        const saved = finalized?.metadata as
-          { verified?: boolean; width?: number; height?: number; path?: string } | undefined;
-        const verified = Boolean(saved?.verified && saved.width && saved.height);
-        return createVerificationResult('file-verified', verified, {
-          path: saved?.path,
-          width: saved?.width,
-          height: saved?.height,
-        });
-      }
-
-      case 'getTree': {
-        const model = (finalized?.payload?.metadata?.model ?? null) as
-          Partial<SemanticModel> | null | undefined;
-        const verified = Boolean(
-          model?.root &&
-          typeof model.summary?.elementCount === 'number' &&
-          model.summary.elementCount > 0
-        );
-        return createVerificationResult('tree-has-nodes', verified, {
-          elementCount: model?.summary?.elementCount,
-          score: model?.score,
-        });
-      }
-
-      default: {
-        return createVerificationResult('session-healthy', sessionHealthy, {
-          sessionId: this.currentSession?.id,
-        });
-      }
-    }
-  }
-
-  private async verifyLaunched(bundleId: string): Promise<VerificationResult> {
-    if (!this.sessionConfig?.verifyAppLaunch) {
-      return {
-        verified: true,
-        strategy: 'launch-acknowledged',
-        checkedAt: new Date(),
-      };
-    }
-
-    try {
-      await retry(
-        async () => {
-          const managed = await sessionManager.getSession(this.currentSession!.deviceUdid);
-          const healthy = managed.driver.isSessionActive();
-          if (!healthy) {
-            throw new Error('Session inactive after launch');
-          }
-        },
-        { retries: 3, delay: 250, backoff: 2 }
-      );
-      return {
-        verified: true,
-        strategy: 'session-active',
-        checkedAt: new Date(),
-      };
-    } catch (error) {
-      logger.warn({ bundleId, error }, 'App launch verification failed');
-      return {
-        verified: false,
-        strategy: 'session-active',
-        checkedAt: new Date(),
-        details: { error: error instanceof Error ? error.message : String(error) },
-      };
-    }
-  }
-
-  private async isSessionHealthy(): Promise<boolean> {
-    if (!this.currentSession) return false;
-    try {
-      const managed = await sessionManager.getSession(this.currentSession.deviceUdid);
-      return managed.driver.isSessionActive();
-    } catch {
-      return false;
-    }
   }
 
   private emitTelemetry(
@@ -462,7 +238,13 @@ export class iPhoneExecutor implements Executor {
   }
 
   async isHealthy(): Promise<boolean> {
-    return this.isSessionHealthy();
+    if (!this.currentSession) return false;
+    try {
+      const managed = await sessionManager.getSession(this.currentSession.deviceUdid);
+      return managed.driver.isSessionActive();
+    } catch {
+      return false;
+    }
   }
 
   static async createWithAutoDevice(config?: Partial<SessionConfig>): Promise<iPhoneExecutor> {

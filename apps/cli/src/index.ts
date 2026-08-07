@@ -426,6 +426,57 @@ program
   });
 
 program
+  .command('back')
+  .description('Navigate back')
+  .action(async () => {
+    const spinner = ora('Going back...').start();
+
+    try {
+      const result = await withClient('back', (client) => client.callTool('back'));
+
+      if (result.success) {
+        spinner.succeed(chalk.green('Back pressed'));
+      } else {
+        spinner.fail(`Failed: ${result.error}`);
+      }
+    } catch (error) {
+      spinner.fail('Back failed');
+      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+      process.exit(1);
+    }
+  });
+
+program
+  .command('scroll <direction>')
+  .description('Scroll in a direction (up, down, left, right)')
+  .option('-d, --distance <pixels>', 'Scroll distance in points', '300')
+  .action(async (direction: string, cmd: { distance?: string }) => {
+    const spinner = ora(`Scrolling ${direction}...`).start();
+
+    if (!['up', 'down', 'left', 'right'].includes(direction)) {
+      spinner.fail(`Invalid direction "${direction}". Use up, down, left, or right.`);
+      process.exit(1);
+    }
+
+    try {
+      const distance = Number(cmd.distance ?? '300');
+      const result = await withClient('scroll', (client) =>
+        client.callTool('swipe', { direction, distance })
+      );
+
+      if (result.success) {
+        spinner.succeed(chalk.green(`Scrolled ${direction} ${distance}pt`));
+      } else {
+        spinner.fail(`Failed: ${result.error}`);
+      }
+    } catch (error) {
+      spinner.fail('Scroll failed');
+      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+      process.exit(1);
+    }
+  });
+
+program
   .command('tree')
   .alias('inspect')
   .description('Inspect the current screen as a semantic UI model (human-readable)')
@@ -459,6 +510,57 @@ program
       }
     } catch (error) {
       spinner.fail('Inspect failed');
+      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+      process.exit(1);
+    }
+  });
+
+program
+  .command('find <label>')
+  .alias('resolve')
+  .description('Resolve a UI element by label into a selector + confidence')
+  .option('-r, --role <role>', 'Only match this semantic role (button, switch, ...)')
+  .option('-j, --json', 'Output as JSON')
+  .action(async (label: string, cmd: { role?: string; json?: boolean }) => {
+    const spinner = cmd.json ? null : ora(`Resolving "${label}"...`).start();
+
+    try {
+      const result = await withClient('find', (client) =>
+        client.callTool('find', {
+          label,
+          role: cmd.role,
+        })
+      );
+
+      spinner?.stop();
+
+      if (!result.success) {
+        console.error(chalk.red(result.error ?? 'Element not found'));
+        process.exit(1);
+      }
+
+      if (cmd.json) {
+        emitJson({ success: true, ...result });
+        return;
+      }
+
+      console.log(chalk.green(`\n✓ Found "${label}"`));
+      console.log(chalk.gray(`  role:       ${result.role ?? 'unknown'}`));
+      console.log(chalk.gray(`  confidence: ${result.confidence ?? '?'}`));
+      console.log(chalk.gray(`  match:      ${result.quality ?? '?'}`));
+      console.log(chalk.gray(`  selector:   ${JSON.stringify(result.selector)}`));
+      console.log(
+        result.enabled === false
+          ? chalk.yellow('  state:      disabled')
+          : chalk.gray(`  state:      ${result.visible === false ? 'hidden' : 'visible'}`)
+      );
+      console.log(
+        chalk.gray(`\n  Use: athena tap "${label}"`),
+        '...or pass the selector directly to tap/type.'
+      );
+      console.log('');
+    } catch (error) {
+      spinner?.fail('Resolve failed');
       console.error(chalk.red(error instanceof Error ? error.message : String(error)));
       process.exit(1);
     }
