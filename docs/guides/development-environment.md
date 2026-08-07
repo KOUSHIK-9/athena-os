@@ -278,7 +278,9 @@ RFC → Implementation PRs → Tests → Architecture Review → Milestone doc �
   the gates passing and the docs being true.
 
 Current state: Phase 4 (Cognition) — RFC-0011 and RFC-0012 implemented;
-backends (deterministic + model-backed) certified by conformance.
+backends (deterministic + model-backed) certified by conformance. The
+model-backed backend runs on the in-repo `StubModelClient`; real provider
+adapters (OpenAI first) implement the same `ModelClient` port.
 
 ---
 

@@ -266,6 +266,9 @@ importers:
       '@athena-os/reasoning':
         specifier: workspace:*
         version: link:../reasoning
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.76
     devDependencies:
       '@types/node':
         specifier: 'catalog:'

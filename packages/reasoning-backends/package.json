@@ -26,7 +26,8 @@
   },
   "dependencies": {
     "@athena-os/core": "workspace:*",
-    "@athena-os/reasoning": "workspace:*"
+    "@athena-os/reasoning": "workspace:*",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",

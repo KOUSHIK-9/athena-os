@@ -7,4 +7,18 @@ export { DeterministicReasoningBackend } from './deterministic/index.js';
 export { LlmReasoningBackend } from './llm/LlmReasoningBackend.js';
 export type { ModelClient, ExtractedGoal, ModelExtraction } from './llm/modelClient.js';
 export { StubModelClient } from './llm/stubModelClient.js';
+export { OpenAIModelClient } from './openai/openAiModelClient.js';
+export { OpenAICompatibleHttpProvider } from './openai/openAiHttpProvider.js';
+export { OpenAIError } from './openai/openAiHttpProvider.js';
+export type {
+  ChatCompletionProvider,
+  ChatCompletionRequest,
+  ChatMessage,
+} from './openai/chatCompletionProvider.js';
+export {
+  OpenAIConfigSchema,
+  openAIConfigFromEnv,
+  parseOpenAIConfig,
+} from './openai/openAiConfig.js';
+export type { OpenAIConfig } from './openai/openAiConfig.js';
 export type { ReasoningBackend, ReasoningBackendResult } from '@athena-os/reasoning';
