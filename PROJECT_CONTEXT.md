@@ -1,16 +1,32 @@
 # PROJECT_CONTEXT.md
 
-## What is Athena OS?
+## What is Athena?
 
-Athena OS is an AI execution platform for iOS: it gives agents a safe, deterministic
-way to operate a (non-jailbroken) iPhone through the accessibility layer, and it is
-built so that the same automation surface can later power vision, planning,
-and memory-based features.
+Athena is a protocol-driven execution platform that transforms human intent
+into trustworthy, verifiable actions across digital systems.
 
-**Goal:** Domain expertise (what an action means, a screen snapshot, a safe plan)
-is separated from whatever technology actually drives the phone. Today that is
-Appium/WebDriverAgent; it lives entirely inside the driver layer and can be
-replaced without touching the public API.
+The identity is architectural, not technological: iPhone, Appium, GPT, and MCP
+are implementation details. Athena gives agents a safe, deterministic way to
+operate a (non-jailbroken) iPhone through the accessibility layer today, and is
+built so the same execution platform can later power vision, planning, and
+memory-based features across any digital system.
+
+**Core separation:** domain expertise (what an action means, a screen snapshot,
+a safe plan) is separated from whatever technology actually drives the device.
+Today that is Appium/WebDriverAgent; it lives entirely inside the driver layer
+and can be replaced without touching the public API.
+
+## What problems does Athena solve?
+
+- **Device automation with safety and determinism:** every action is validated,
+  verified, and observable — no silent success, no silent failure.
+- **Semantic understanding:** the system reasons about *what* a screen contains
+  (roles, labels, confidence), not raw coordinates or driver internals.
+- **Durable architecture:** reasoning (GPT/Claude/Gemini/future models) is one
+  implementation of an engine, never a prerequisite. Technology is replaceable;
+  protocols are not.
+- **Extensibility:** new capabilities build on stable baselines; they do not
+  replace them.
 
 ## Repo Layout
 
@@ -51,28 +67,26 @@ DeviceInfo, Session, Events, Errors); no other package may define them.
   architecture tests → docs.
 - We review each milestone before moving to the next.
 
-## Status
+## Design Principles
 
-- Sprint 0 foundation green: monorepo, 8 packages, all checks pass.
-- Sprint 1 architecture cleanup: `core` extracted, Appium leak removed, CLI
-  committed to MCP child process, architecture tests enforced in CI.
-- Architecture Decision Records added under `docs/adr/` (core package,
-  MCP boundary, driver abstraction, CLI boundary).
-- Milestone 2B (UI Understanding) green: `packages/understanding` builds a
-  semantic model (roles, labels, confidence) from the accessibility tree and
-  renders it; `athena tree` exposes it; RFC-0002.
-- Milestone 2C (Interaction) green: interactions (`launch`, `terminate`, `tap`,
-  `type`, `swipe`, `home`, `back`, `wait`, `screenshot`, `getTree`) are
-  first-class `Capability`s (`agents/iphone-agent/src/capabilities/`) with
-  validate/execute/verify/telemetry, one independent test per capability, and
-  the executor dispatches through the capability registry.
-- Milestone 2D (Semantic Resolution) green: `selectFromModel` / `resolveElement`
-  / `findByLabel` resolve a UI element from a human-readable label into a
-  driver selector + confidence; exposed as the `athena find` CLI command and
-  the `find` MCP tool.
+- **Intent is the API. Execution is the implementation.** (Manifesto, Draft.)
+  The system exists to transform human intent into trustworthy digital
+  execution — one verified action at a time.
+- **Technology is replaceable, protocols are not.** Models, drivers, and device
+  backends are swappable; the contracts survive them.
+- **Capabilities grant ability, never authority.** Execution runs inside
+  guards; approval is mandatory where a decision point demands it.
+- **Stable milestones are baselines, not redesign targets.** New capabilities
+  build on a baseline; they never replace its contracts. Superseding a baseline
+  is a deliberate, versioned decision.
+- **Reasoning is independent of execution.** The reasoning engine decides from
+  capabilities; the execution engine runs, retries, and records.
+- **Every action is observable.** Result + Verification + Telemetry on every
+  action. No silent success, no silent failure.
+- Document hierarchy: README (what) → Manifesto (why) → Engineering Principles
+  (how) → RFCs/ADRs (why decisions were made) → Code (how implemented).
 
-## Next
-
-- Milestone 3 (Task Execution, deterministic, no GPT): chain capabilities into
-  higher-order plans; end-to-end device verification.
-- Replace remaining "Sprint" naming with Milestone naming as docs refresh.
+For the immutable engineering rules, see `ENGINEERING_PRINCIPLES.md`. For the
+identity, see `ATHENA_MANIFESTO.md` (Draft). The historical record of each
+milestone (goals, deliverables, decisions, lessons, debt, what comes next) lives
+in `docs/milestones/`.

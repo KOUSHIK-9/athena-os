@@ -73,3 +73,13 @@ This principle is what will power debugging, dashboards, and post-mortem analysi
 
 - `build` emits `dist/**` as `.js` (`"type": "module"`); exports maps must reference real files.
 - Node >= 20. Runtime features (doctor, screenshot, launch, GPT, memory) ride on this architecture as separate milestones.
+
+## 10. Stable Milestones Are Baselines, Not Redesign Targets
+
+When a milestone is declared complete and a baseline version is tagged (e.g. `v0.3.0-alpha.1`), it becomes a **dependency**, not a redesign target:
+
+- New capabilities build on the baseline; they do not replace its contracts.
+- No baseline architecture/protocol changes while it remains a baseline. A baseline can later be superseded (a new baseline), but that is a deliberate, versioned decision — never an ad hoc rewrite.
+- The baseline is the foundation: future work extends it.
+
+This is how mature platforms evolve: layers of stable baselines, each extending the last, never undermining it.
