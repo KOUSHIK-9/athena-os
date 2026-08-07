@@ -19,7 +19,7 @@ export { screenshotCapability } from './capabilities/screenshot.js';
 export { treeCapability } from './capabilities/tree.js';
 export { SessionManager, sessionManager } from './session.js';
 export { selectDevice, discoverDevices, getDeviceInfo, verifyDeviceReady } from './device.js';
-export { resolveAppNameToBundleId } from './apps.js';
+export { resolveAppNameToBundleId, resolveKnownAppBundleId } from './apps.js';
 export {
   parsePng,
   buildScreenshotMetadata,

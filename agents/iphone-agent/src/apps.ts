@@ -29,6 +29,23 @@ const KNOWN_BUNDLE_IDS: Record<string, string> = {
   netflix: 'com.netflix.Netflix',
 };
 
+export const knownAppBundleIds: ReadonlyMap<string, string> = new Map(
+  Object.entries(KNOWN_BUNDLE_IDS)
+);
+
+/**
+ * Pure, synchronous resolution: bundle-ID passthrough first, then the static
+ * known-apps map. Returns `undefined` when unresolvable without a device
+ * (device-side resolution happens in `resolveAppNameToBundleId`).
+ */
+export function resolveKnownAppBundleId(name: string): string | undefined {
+  const input = name.trim();
+  if (BUNDLE_ID_REGEX.test(input)) {
+    return input;
+  }
+  return knownAppBundleIds.get(input.toLowerCase());
+}
+
 const BUNDLE_ID_REGEX = /^[a-zA-Z0-9_.-]+\.[a-zA-Z0-9_.-]+$/;
 
 interface InstalledApp {

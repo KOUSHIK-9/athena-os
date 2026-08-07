@@ -567,6 +567,119 @@ program
   });
 
 program
+  .command('run <prompt>')
+  .description(
+    'Execute an intent end-to-end: reason into a validated plan, then run it on the device'
+  )
+  .option('--dry-run', 'Reason, validate and preview the plan without touching the device')
+  .option(
+    '-b, --backend <backend>',
+    'Reasoning backend: auto (default), deterministic, llm',
+    'auto'
+  )
+  .option('-j, --json', 'Output the full run result as JSON')
+  .action(async (prompt: string, cmd: { dryRun?: boolean; backend?: string; json?: boolean }) => {
+    const spinner = cmd.json ? null : ora(`Reasoning: "${prompt}"...`).start();
+
+    try {
+      const result = await withClient('run', (client) =>
+        client.callTool('run', {
+          prompt,
+          dryRun: cmd.dryRun ?? false,
+          backend: cmd.backend ?? 'auto',
+        })
+      );
+
+      spinner?.stop();
+
+      if (cmd.json) {
+        emitJson(result);
+        return;
+      }
+
+      if (!result.success) {
+        switch (result.kind) {
+          case 'clarificationRequired':
+            console.log(chalk.yellow(`\n⚠ Need clarification: ${result.reason}`));
+            break;
+          case 'rejected':
+            console.log(chalk.red('\n✗ Intent rejected:'));
+            for (const reason of (result.reasons as string[]) ?? []) {
+              console.log(chalk.red(`  - ${reason}`));
+            }
+            break;
+          case 'unresolvable':
+            console.log(chalk.red('\n✗ Plan unresolvable:'));
+            for (const blocked of (result.blocked as Array<{ stepId: string; reason: string }>) ??
+              []) {
+              console.log(chalk.red(`  - ${blocked.reason}`));
+            }
+            break;
+          case 'executionFailed':
+            console.log(chalk.red(`\n✗ Execution failed: ${result.error}`));
+            break;
+          default:
+            console.log(chalk.red(`\n✗ ${result.error ?? 'Run failed'}`));
+        }
+        process.exit(1);
+      }
+
+      const backend = result.backendId as string;
+      console.log(chalk.cyan(`\n🧠 Reasoning (${backend})`));
+
+      const plan = result.plan as { steps?: Array<{ capabilityId: string; description: string }> };
+      if (plan?.steps) {
+        plan.steps.forEach((step, index) => {
+          console.log(chalk.gray(`  ${index + 1}. [${step.capabilityId}] ${step.description}`));
+        });
+      }
+
+      if (cmd.dryRun) {
+        console.log(chalk.green(`\n✓ Plan ready — ${plan?.steps?.length ?? 0} step(s). `));
+        console.log(chalk.gray('  (dry run: device not touched. Drop --dry-run to execute.)'));
+        console.log('');
+        return;
+      }
+
+      if (result.kind === 'plan') {
+        console.log(chalk.gray('\n  (dry run: device not touched)'));
+        console.log('');
+        return;
+      }
+
+      const executed =
+        (result.executed as Array<{
+          stepIndex: number;
+          description: string;
+          success: boolean;
+          error?: string;
+          duration: number;
+          screenshot?: string;
+        }>) ?? [];
+
+      console.log(chalk.bold('\n⚙️  Execution'));
+      for (const step of executed) {
+        if (step.success) {
+          console.log(
+            chalk.green(
+              `  ✓ ${step.description}${step.screenshot ? ` (screenshot: ${step.screenshot})` : ''}`
+            )
+          );
+          if (step.screenshot) console.log(chalk.gray(`    saved: ${step.screenshot}`));
+        } else {
+          console.log(chalk.red(`  ✗ ${step.description}`));
+          console.log(chalk.red(`    ${step.error ?? 'failed'}`));
+        }
+      }
+      console.log('');
+    } catch (error) {
+      spinner?.fail('Run failed');
+      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+      process.exit(1);
+    }
+  });
+
+program
   .command('disconnect')
   .description('Disconnect from the device and close the session')
   .action(async () => {

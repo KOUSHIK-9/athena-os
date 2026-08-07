@@ -16,7 +16,9 @@ import {
   SwipeParamsSchema,
   TerminateAppParamsSchema,
   WaitParamsSchema,
+  RunParamsSchema,
 } from './tools.js';
+import { runOnDevice } from './run/execute.js';
 import { verifyWDA } from '@athena-os/iphone-agent';
 import { discoverDevices } from '@athena-os/iphone-agent';
 import { resolveAppNameToBundleId } from '@athena-os/iphone-agent';
@@ -208,6 +210,31 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       name: 'back',
       description: 'Go back (navigate back)',
       inputSchema: { type: 'object', properties: {} },
+    },
+    {
+      name: 'run',
+      description:
+        'Execute an intent end-to-end: reason (RFC-0011/0012) into a validated plan, then run the plan steps on the connected device. "dryRun" reasons, validates and previews without touching the device.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          prompt: {
+            type: 'string',
+            description: 'Natural-language intent, e.g. "Open Settings"',
+          },
+          dryRun: {
+            type: 'boolean',
+            description: 'Only reason and preview the plan; do not touch the device',
+          },
+          backend: {
+            type: 'string',
+            enum: ['auto', 'deterministic', 'llm'],
+            description:
+              'Reasoning backend: auto (LLM when ATHENA_OPENAI_API_KEY is set, else deterministic), deterministic, llm',
+          },
+        },
+        required: ['prompt'],
+      },
     },
     {
       name: 'disconnect',
@@ -484,6 +511,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const result = await executor.execute({ type: 'back', description: 'Go back' });
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        };
+      }
+
+      case 'run': {
+        const params = RunParamsSchema.parse(args);
+        const outcome = await runOnDevice({
+          prompt: params.prompt,
+          dryRun: params.dryRun,
+          backend: params.backend,
+        });
+        return {
+          content: [{ type: 'text', text: JSON.stringify(outcome, null, 2) }],
         };
       }
 

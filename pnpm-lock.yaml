@@ -378,6 +378,12 @@ importers:
       '@athena-os/iphone-agent':
         specifier: workspace:*
         version: link:../../agents/iphone-agent
+      '@athena-os/reasoning':
+        specifier: workspace:*
+        version: link:../../packages/reasoning
+      '@athena-os/reasoning-backends':
+        specifier: workspace:*
+        version: link:../../packages/reasoning-backends
       '@athena-os/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk

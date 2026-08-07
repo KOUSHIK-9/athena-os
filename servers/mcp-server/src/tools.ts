@@ -42,4 +42,10 @@ export const WaitParamsSchema = z.object({
 
 export const BackParamsSchema = z.object({});
 
+export const RunParamsSchema = z.object({
+  prompt: z.string().min(1),
+  dryRun: z.boolean().optional(),
+  backend: z.enum(['auto', 'deterministic', 'llm']).optional().default('auto'),
+});
+
 export const DisconnectParamsSchema = z.object({});
