@@ -8,6 +8,7 @@ capturing proposals and their status through to acceptance.
 
 - **Draft** — proposed; design in progress.
 - **Accepted** — the decision stands; implementation exists or is committed.
+- **Implemented** — Accepted, with a committed reference implementation.
 - **Superseded by RFC NNNN** — replaced.
 
 ## Index
@@ -23,3 +24,4 @@ capturing proposals and their status through to acceptance.
 | [0007](0007-constraint-governance-model.md) | The Constraint and Governance Model | Accepted |
 | [0008](0008-decision-point-protocol.md) | The Decision Point Protocol | Accepted |
 | [0009](0009-reasoning-engine-interface.md) | The Contract Between Intent and Execution | Accepted |
+| [0011](0011-deterministic-reasoning-engine.md) | The Deterministic Reasoning Engine | **Implemented** |
