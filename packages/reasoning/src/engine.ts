@@ -100,7 +100,7 @@ export class DeterministicReasoningEngine {
     if (!validation.valid) {
       return {
         kind: 'rejected',
-        reasons: validation.violations.map((v) => v.message),
+        reasons: validation.errors.map((e) => e.message),
       };
     }
 

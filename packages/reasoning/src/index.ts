@@ -17,4 +17,11 @@ export type {
 export { DeterministicPlanBuilder } from './planBuilder.js';
 export type { PlanBuilder, PlanInput, GoalCapabilityBinding } from './planBuilder.js';
 export { DeterministicPlanValidator, isPlanValid } from './validator.js';
-export type { PlanValidator, PlanValidationResult, PlanViolation } from './validator.js';
+export type {
+  PlanValidator,
+  PlanValidationResult,
+  Diagnostic,
+  DiagnosticSeverity,
+  TraceEntry,
+  ValidationPhase,
+} from './validator.js';

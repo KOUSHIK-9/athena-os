@@ -114,11 +114,20 @@ Every stage has one input, one output, and no side effects.
 ### 1.5 Plan Validator
 
 - **Input:** `ExecutionPlan`, `CapabilityRegistry`
-- **Output:** Valid / Invalid with violations
-- **Contract:** Enforces the RFC-0006 Plan Invariants: non-empty Steps,
-  registered Capabilities, unique Step ids, valid `dependsOn` references.
-  This stage is the platform's authority: an invalid plan never leaves the
-  engine, regardless of which stage produced it.
+- **Output:** Diagnostics — `valid`, `errors`, `warnings`, `suggestions`,
+  and a `trace` of the checks that ran
+- **Contract:** The validator behaves like a compiler: it reports, it never
+  mutates. It enforces the RFC-0006 Plan Invariants structurally (non-empty
+  Steps, registered Capabilities, unique Step ids, valid `dependsOn`
+  references, acyclic graph) and may warn (e.g. dependencies on
+  later-declared Steps) or suggest (e.g. transitive dependencies) without
+  affecting validity.
+- **Phased design:** `structural` validation runs today; a `semantic` phase
+  (RFC-0006 §4–§8, RFC-0007 constraint compliance, RFC-0008 decision
+  points, RFC-0009 reasoning guarantees) is the open door — mirroring a
+  compiler's parse-then-type-check split. Not yet implemented.
+- **Authority:** an invalid plan never leaves the engine, regardless of
+  which stage produced it.
 
 ## 2. Determinism Guarantees
 
