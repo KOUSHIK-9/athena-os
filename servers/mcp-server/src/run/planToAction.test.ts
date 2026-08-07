@@ -89,6 +89,58 @@ describe('mapStepToAction', () => {
     }
   });
 
+  it('falls back to the raw intent text when the model paraphrased away the target', () => {
+    const intent: Intent = {
+      id: 'intent-test',
+      text: 'Tap the Continue button',
+      goals: [{ id: 'g1', kind: 'tap', description: 'Tap click' }],
+      constraints: [],
+    };
+    const mapped = mapStepToAction(step({ capabilityId: 'tap', goalId: 'g1' }), intent);
+    expect(mapped.ok).toBe(true);
+    if (mapped.ok) {
+      expect(mapped.label).toBe('Continue button');
+    }
+  });
+
+  it('resolves the app from the intent text when the goal lost the target', () => {
+    const intent: Intent = {
+      id: 'intent-test',
+      text: 'Open Settings',
+      goals: [{ id: 'g1', kind: 'openApp', description: 'Launch the app' }],
+      constraints: [],
+    };
+    const mapped = mapStepToAction(step({ capabilityId: 'launchApp', goalId: 'g1' }), intent);
+    expect(mapped.ok).toBe(true);
+    if (mapped.ok) {
+      expect(mapped.action).toMatchObject({ bundleId: 'com.apple.Preferences' });
+    }
+  });
+
+  it('ignores single-quoted capability metadata in fallback step descriptions', () => {
+    const intent: Intent = {
+      id: 'intent-test',
+      text: 'Tap the Continue button',
+      goals: [],
+      constraints: [],
+    };
+    const mapped = mapStepToAction(
+      {
+        id: 'step-1',
+        goalId: 'goal-1',
+        capabilityId: 'tap',
+        action: 'execute',
+        description: "Satisfy 'tap' with 'tap'",
+        dependsOn: [],
+      },
+      intent
+    );
+    expect(mapped.ok).toBe(true);
+    if (mapped.ok) {
+      expect(mapped.label).toBe('Continue button');
+    }
+  });
+
   it('rejects a tap with no label', () => {
     const intent = makeIntent([{ kind: 'tap', description: 'tap' }]);
     const mapped = mapStepToAction(step({ capabilityId: 'tap', goalId: 'g1' }), intent);

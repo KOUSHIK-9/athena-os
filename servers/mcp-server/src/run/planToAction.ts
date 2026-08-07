@@ -15,7 +15,7 @@ import { resolveKnownAppBundleId } from '@athena-os/iphone-agent';
 export type RunAction =
   { ok: true; action: Action; label?: string } | { ok: false; stepId: string; reason: string };
 
-const QUOTED = /['"]([^'"]+)['"]/;
+const QUOTED = /"([^"]+)"/;
 
 function firstQuoted(text: string): string | undefined {
   const match = QUOTED.exec(text);
@@ -72,6 +72,16 @@ function stripAppSuffix(name: string): string {
   return name.replace(/\b(app|application)s?\b$/i, '').trim();
 }
 
+function firstOf(...values: Array<string | undefined | null>): string | undefined {
+  for (const value of values) {
+    const trimmed = value?.trim();
+    if (trimmed && trimmed.length > 0) {
+      return trimmed;
+    }
+  }
+  return undefined;
+}
+
 function goalForStep(intent: Intent, step: PlanStep): Goal | undefined {
   return intent.goals.find((goal) => goal.id === step.goalId);
 }
@@ -84,27 +94,38 @@ function fallbackGoal(step: PlanStep): Goal {
   };
 }
 
-function elementLabelFor(goal: Goal): string | undefined {
-  const quoted = firstQuoted(goal.description);
-  if (quoted) return quoted;
-  const cleaned = stripLeadingNoise(goal.description);
-  return cleaned.length > 0 ? cleaned : undefined;
-}
-
 export function mapStepToAction(step: PlanStep, intent: Intent): RunAction {
   const goal = goalForStep(intent, step) ?? fallbackGoal(step);
   const description = step.description;
 
+  const intentText = intent.text ?? '';
+
   switch (step.capabilityId) {
     case 'launchApp': {
-      const candidate = (goal.target ?? stripLeadingNoise(goal.description)).trim();
-      const bundleId =
-        resolveKnownAppBundleId(candidate) ?? resolveKnownAppBundleId(stripAppSuffix(candidate));
+      const candidates = [
+        goal.target,
+        stripLeadingNoise(goal.description),
+        stripLeadingNoise(intentText),
+        intentText,
+      ];
+      let candidate = '';
+      let bundleId: string | undefined;
+      for (const value of candidates) {
+        const trimmed = value?.trim();
+        if (!trimmed) continue;
+        const resolved =
+          resolveKnownAppBundleId(trimmed) ?? resolveKnownAppBundleId(stripAppSuffix(trimmed));
+        if (resolved) {
+          candidate = trimmed;
+          bundleId = resolved;
+          break;
+        }
+      }
       if (!bundleId) {
         return {
           ok: false,
           stepId: step.id,
-          reason: `cannot resolve app "${candidate}" to a bundle identifier (use a known app name or a full bundle id)`,
+          reason: `cannot resolve app "${candidate || intentText}" to a bundle identifier (use a known app name or a full bundle id)`,
         };
       }
       return {
@@ -114,7 +135,12 @@ export function mapStepToAction(step: PlanStep, intent: Intent): RunAction {
     }
 
     case 'tap': {
-      const label = elementLabelFor(goal);
+      const label = firstOf(
+        firstQuoted(goal.description),
+        firstQuoted(intentText),
+        stripLeadingNoise(intentText),
+        stripLeadingNoise(goal.description)
+      );
       if (!label) {
         return {
           ok: false,
@@ -126,8 +152,13 @@ export function mapStepToAction(step: PlanStep, intent: Intent): RunAction {
     }
 
     case 'type': {
-      const quoted = firstQuoted(goal.description);
-      const text = quoted ?? goal.target ?? stripLeadingNoise(goal.description);
+      const text = firstOf(
+        firstQuoted(goal.description),
+        goal.target,
+        firstQuoted(intentText),
+        stripLeadingNoise(goal.description),
+        stripLeadingNoise(intentText)
+      );
       if (!text) {
         return {
           ok: false,
