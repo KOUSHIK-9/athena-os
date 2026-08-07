@@ -4,6 +4,7 @@ export const GoalSchema = z.object({
   id: z.string().min(1),
   kind: z.string().min(1),
   description: z.string(),
+  target: z.string().optional(),
 });
 
 export type Goal = z.infer<typeof GoalSchema>;
