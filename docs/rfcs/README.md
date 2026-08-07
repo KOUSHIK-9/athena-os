@@ -25,3 +25,5 @@ capturing proposals and their status through to acceptance.
 | [0008](0008-decision-point-protocol.md) | The Decision Point Protocol | Accepted |
 | [0009](0009-reasoning-engine-interface.md) | The Contract Between Intent and Execution | Accepted |
 | [0011](0011-deterministic-reasoning-engine.md) | The Deterministic Reasoning Engine | **Implemented** |
+| [0012](0012-reasoning-backend-contract.md) | The Reasoning Backend Contract & Conformance | **Implemented** |
+| [0013](0013-memory-model.md) | The Memory Model | Draft |
