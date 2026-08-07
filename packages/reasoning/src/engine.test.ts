@@ -45,7 +45,7 @@ describe('DeterministicReasoningEngine', () => {
 
   it('rejects the intent when a goal is forbidden by a constraint', () => {
     const constraints: Constraint[] = [
-      { id: 'c1', kind: 'forbid', goalKind: 'openApp', reason: 'app launching disabled' },
+      { id: 'c1', kind: 'forbid', goalKind: 'openApp', category: 'hard', reason: 'app launching disabled' },
     ];
     const result = engine.reason(sampleIntent({ constraints }));
     expect(result.kind).toBe('rejected');

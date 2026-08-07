@@ -47,14 +47,14 @@ describe('DeterministicGoalExtractor', () => {
       ]);
     });
 
-    it('maps "reply to Alice" to a sendMessage goal with target', () => {
+    it('maps "reply to Alice" to a sendMessage goal with a cleaned target', () => {
       const goals = extractor.extractGoals(sampleIntent({ text: 'reply to Alice' }));
       expect(goals).toEqual([
         {
           id: 'goal-1',
           kind: 'sendMessage',
           description: 'reply to Alice',
-          target: 'to Alice',
+          target: 'Alice',
         },
       ]);
     });

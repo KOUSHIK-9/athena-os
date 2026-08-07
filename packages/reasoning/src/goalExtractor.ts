@@ -31,6 +31,16 @@ const VERB_LEXICON: Record<string, string> = {
   disable: 'toggleSetting',
 };
 
+const LEADING_PREPOSITIONS = new Set(['to', 'in', 'on', 'at', 'for', 'the', 'a', 'an']);
+
+function cleanTarget(raw: string): string {
+  const parts = raw.trim().split(/\s+/);
+  if (parts.length > 1 && LEADING_PREPOSITIONS.has(parts[0].toLowerCase())) {
+    return parts.slice(1).join(' ');
+  }
+  return parts.join(' ');
+}
+
 export class DeterministicGoalExtractor implements GoalExtractor {
   extractGoals(intent: Intent): Goal[] {
     const structured = intent.goals.filter(
@@ -55,7 +65,7 @@ export class DeterministicGoalExtractor implements GoalExtractor {
       return [];
     }
 
-    const target = parts.slice(1).join(' ');
+    const target = cleanTarget(parts.slice(1).join(' '));
 
     return [
       {

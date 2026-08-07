@@ -30,7 +30,7 @@ describe('Scenario: Reply to a message (verb lexicon path)', () => {
     expect(result.plan.steps[0].capabilityId).toBe('messages-send');
   });
 
-  it('extracts the target as the goal target (Alice)', () => {
+  it('extracts the cleaned target as the goal target (Alice)', () => {
     const engine = new DeterministicReasoningEngine(registry);
 
     const result = engine.reason({
