@@ -176,8 +176,26 @@ export class AppiumDriver implements Driver {
       await element.setValue(text);
     } else {
       logger.debug({ text: text.substring(0, 50) }, 'Typing into active element');
-      await this.client.setValue(text);
+      await this.typeIntoActiveField(text);
     }
+  }
+
+  private async typeIntoActiveField(text: string): Promise<void> {
+    for (const fieldType of ['XCUIElementTypeSearchField', 'XCUIElementTypeTextField']) {
+      const elements = await this.client.findElements('xpath', `//*[@type="${fieldType}"]`);
+      const elementId =
+        elements[0]?.['element-6066-11e4-a52e-4f735466cecf'] ?? elements[0]?.ELEMENT;
+      if (elementId) {
+        await this.client.elementSendKeys(elementId, text);
+        return;
+      }
+    }
+    throw new AppiumElementNotFoundError(
+      '<active input>',
+      this.sessionId ?? 'unknown',
+      ['XCUIElementTypeSearchField', 'XCUIElementTypeTextField'],
+      new Error('No text input field found on the current screen')
+    );
   }
 
   async swipe(

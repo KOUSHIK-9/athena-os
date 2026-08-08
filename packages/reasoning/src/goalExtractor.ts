@@ -33,6 +33,13 @@ const VERB_LEXICON: Record<string, string> = {
   click: 'tap',
   press: 'tap',
   select: 'tap',
+  type: 'type',
+  enter: 'type',
+  input: 'type',
+  fill: 'type',
+  search: 'type',
+  back: 'back',
+  home: 'home',
 };
 
 const LEADING_PREPOSITIONS = new Set(['to', 'in', 'on', 'at', 'for', 'the', 'a', 'an']);

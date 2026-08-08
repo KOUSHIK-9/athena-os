@@ -99,6 +99,9 @@ export class iPhoneExecutor implements Executor {
 
       if (attempt > 1) {
         logger.warn({ action: action.type, attempt }, 'Retrying action after transient failure');
+        if (run.metadata.state === 'pending') {
+          this.transition(run, 'running');
+        }
         this.transition(run, 'retrying');
       }
 
@@ -171,6 +174,9 @@ export class iPhoneExecutor implements Executor {
           };
         }
 
+        if (run.metadata.state !== 'pending') {
+          this.transition(run, 'running');
+        }
         this.transition(run, 'pending');
         await sleep(100 * attempt);
       }
