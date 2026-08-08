@@ -100,7 +100,7 @@ async function resolveTapSelector(
   const model = (treeResult as { metadata?: { model?: SemanticModel } }).metadata?.model;
   if (!model?.root) return undefined;
 
-  return selectFromModel(model, label)?.selector;
+  return selectFromModel(model, label, { visibleOnly: true, enabledOnly: true })?.selector;
 }
 
 export async function runOnDevice(request: RunRequest): Promise<RunOutcome> {

@@ -166,12 +166,25 @@ export function selectFromModel(
     best = null;
   }
 
-  if (!best) return null;
+  if (best) {
+    return {
+      element: best.element,
+      selector: selectorForElement(best.element),
+      confidence: best.confidence,
+      quality: best.match,
+    };
+  }
 
-  return {
-    element: best.element,
-    selector: selectorForElement(best.element),
-    confidence: best.confidence,
-    quality: best.match,
-  };
+  for (const match of result.matches) {
+    if (!passesFilters(match.element, options)) continue;
+    if (options.minConfidence !== undefined && match.confidence < options.minConfidence) continue;
+    return {
+      element: match.element,
+      selector: selectorForElement(match.element),
+      confidence: match.confidence,
+      quality: match.match,
+    };
+  }
+
+  return null;
 }
