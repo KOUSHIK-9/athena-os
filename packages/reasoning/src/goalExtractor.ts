@@ -29,6 +29,10 @@ const VERB_LEXICON: Record<string, string> = {
   toggle: 'toggleSetting',
   enable: 'toggleSetting',
   disable: 'toggleSetting',
+  tap: 'tap',
+  click: 'tap',
+  press: 'tap',
+  select: 'tap',
 };
 
 const LEADING_PREPOSITIONS = new Set(['to', 'in', 'on', 'at', 'for', 'the', 'a', 'an']);

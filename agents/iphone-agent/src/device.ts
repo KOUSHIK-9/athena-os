@@ -76,23 +76,105 @@ class LibIMobileDeviceDiscovery implements DeviceDiscovery {
   }
 }
 
+interface SimulatorEntry {
+  udid: string;
+  name: string;
+  state: string;
+  osVersion: string;
+}
+
+function parseSimulatorRuntime(runtime: string): string {
+  const match = runtime.match(/iOS-(\d+)-(\d+)/);
+  return match ? `${match[1]}.${match[2]}` : 'unknown';
+}
+
+async function listSimulators(): Promise<SimulatorEntry[]> {
+  const { stdout } = await execFileAsync('xcrun', [
+    'simctl',
+    'list',
+    'devices',
+    '--json',
+  ]);
+  const data = JSON.parse(stdout);
+
+  const entries: SimulatorEntry[] = [];
+  for (const runtime of Object.keys(data.devices ?? {})) {
+    const osVersion = parseSimulatorRuntime(runtime);
+    for (const device of data.devices[runtime] ?? []) {
+      entries.push({
+        udid: device.udid,
+        name: device.name,
+        state: device.state,
+        osVersion,
+      });
+    }
+  }
+  return entries;
+}
+
+class SimctlDiscovery implements DeviceDiscovery {
+  readonly name = 'simctl';
+
+  async discover(): Promise<ConnectedDevice[]> {
+    const simulators = await listSimulators();
+
+    const devices: ConnectedDevice[] = [];
+    for (const sim of simulators) {
+      devices.push({
+        udid: sim.udid,
+        name: sim.name,
+        model: sim.name,
+        osVersion: sim.osVersion,
+        isSimulator: true,
+        developerMode: true,
+        isAvailable: sim.state === 'Booted',
+      });
+    }
+
+    logger.info(
+      { count: devices.length, booted: devices.filter((d) => d.isAvailable).length },
+      'simctl discovered iOS simulators'
+    );
+    return devices;
+  }
+}
+
+async function findSimulator(udid: string): Promise<SimulatorEntry | undefined> {
+  const simulators = await listSimulators();
+  return simulators.find((sim) => sim.udid === udid);
+}
+
 export const devicectlDiscovery = new DevicectlDiscovery();
 export const libIMobileDiscovery = new LibIMobileDeviceDiscovery();
+export const simctlDiscovery = new SimctlDiscovery();
 
 export async function discoverDevices(): Promise<ConnectedDevice[]> {
   logger.debug('Discovering connected iOS devices');
 
-  const providers: DeviceDiscovery[] = [devicectlDiscovery, libIMobileDiscovery];
+  const providers: DeviceDiscovery[] = [
+    devicectlDiscovery,
+    simctlDiscovery,
+    libIMobileDiscovery,
+  ];
+
+  const seen = new Set<string>();
+  const all: ConnectedDevice[] = [];
 
   for (const provider of providers) {
     try {
-      return await provider.discover();
+      const devices = await provider.discover();
+      for (const device of devices) {
+        if (!seen.has(device.udid)) {
+          seen.add(device.udid);
+          all.push(device);
+        }
+      }
     } catch (error) {
-      logger.warn({ provider: provider.name, error }, 'device discovery failed, trying next');
+      logger.warn({ provider: provider.name, error }, 'device discovery failed');
     }
   }
 
-  return [];
+  return all;
 }
 
 export async function getDeviceInfo(udid: string): Promise<DeviceInfo> {
@@ -122,7 +204,23 @@ export async function getDeviceInfo(udid: string): Promise<DeviceInfo> {
       };
     }
   } catch (error) {
-    logger.warn({ udid, error }, 'devicectl device info failed, falling back to ideviceinfo');
+    logger.warn({ udid, error }, 'devicectl device info failed, falling back to simctl');
+  }
+
+  try {
+    const sim = await findSimulator(udid);
+    if (sim) {
+      return {
+        udid,
+        name: sim.name,
+        model: sim.name,
+        osVersion: sim.osVersion,
+        isSimulator: true,
+        developerMode: true,
+      };
+    }
+  } catch (error) {
+    logger.warn({ udid, error }, 'simctl device info failed, falling back to ideviceinfo');
   }
 
   try {
@@ -158,6 +256,13 @@ export async function getDeviceInfo(udid: string): Promise<DeviceInfo> {
 
 export async function checkDeveloperMode(udid: string): Promise<boolean> {
   try {
+    const sim = await findSimulator(udid);
+    if (sim) return sim.state === 'Booted';
+  } catch {
+    // fall through to devicectl
+  }
+
+  try {
     const { stdout } = await execFileAsync('xcrun', [
       'devicectl',
       'list',
@@ -187,25 +292,33 @@ export async function selectDevice(
     );
   }
 
-  if (explicitUdid) {
-    const device = devices.find((d) => d.udid === explicitUdid);
+  const requested = explicitUdid ?? process.env.ATHENA_DEVICE_UDID;
+
+  if (requested) {
+    const device = devices.find((d) => d.udid === requested);
     if (!device) {
-      throw new DeviceNotFoundError(`Device not found: ${explicitUdid}`);
+      throw new DeviceNotFoundError(`Device not found: ${requested}`);
     }
-    if (options?.requireDeveloperMode && !device.developerMode) {
+    if (requested === explicitUdid && options?.requireDeveloperMode && !device.developerMode) {
       throw new DeviceNotReadyError(device.udid, 'Developer Mode is not enabled');
     }
     return device;
   }
 
-  const availableDevices = devices.filter((d) => d.isAvailable);
+  const available = devices.filter((d) => d.isAvailable);
+  // Prefer booted simulators so `athena run` targets a simulator out of the
+  // box when one is running; physical devices remain the fallback.
+  const ready =
+    available.filter((d) => d.isSimulator).length > 0
+      ? available.filter((d) => d.isSimulator)
+      : available;
 
-  if (availableDevices.length === 0) {
+  if (ready.length === 0) {
     throw new DeviceNotReadyError('all', 'No available devices found');
   }
 
-  if (availableDevices.length === 1) {
-    const device = availableDevices[0];
+  if (ready.length === 1) {
+    const device = ready[0];
     if (options?.requireDeveloperMode && !device.developerMode) {
       throw new DeviceNotReadyError(device.udid, 'Developer Mode is not enabled');
     }
@@ -216,7 +329,7 @@ export async function selectDevice(
   // For now, throw an error requiring explicit UDID
   throw new Error(
     `Multiple devices connected. Please specify UDID via ATHENA_DEVICE_UDID:\n` +
-      availableDevices
+      ready
         .map((d) => `  ${d.udid} - ${d.name} (${d.model}, iOS ${d.osVersion})`)
         .join('\n')
   );

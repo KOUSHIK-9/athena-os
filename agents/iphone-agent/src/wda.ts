@@ -1,9 +1,36 @@
 import { createLogger } from '@athena-os/shared';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { existsSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 
 const execFileAsync = promisify(execFile);
 const logger = createLogger('WDA');
+
+export const WDA_RUNNER_BUNDLE_ID = 'com.apple.WebDriverAgentRunner';
+
+/** Resolve the appium-xcuitest-driver bundled WebDriverAgent source tree. */
+export function resolveWDAPath(override?: string): string {
+  if (override) return override;
+
+  const candidates = [
+    process.env.ATHENA_WDA_PATH,
+    join(
+      homedir(),
+      '.appium/node_modules/appium-xcuitest-driver/node_modules/appium-webdriveragent/WebDriverAgent.xcodeproj',
+    ),
+  ].filter(Boolean) as string[];
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate;
+  }
+
+  throw new Error(
+    'WebDriverAgent source not found. Install the xcuitest driver (appium driver install xcuitest) ' +
+      'or set ATHENA_WDA_PATH.',
+  );
+}
 
 export interface WDAStatus {
   xcodeInstalled: boolean;
@@ -12,6 +39,7 @@ export interface WDAStatus {
   wdaRunnerInstalled: boolean;
   wdaRunnerPath?: string;
   signingIdentity?: string;
+  teamId?: string;
 }
 
 export async function verifyWDA(): Promise<WDAStatus> {
@@ -23,31 +51,23 @@ export async function verifyWDA(): Promise<WDAStatus> {
     wdaRunnerInstalled: false,
   };
 
-  // Check Xcode
   try {
     const { stdout } = await execFileAsync('xcodebuild', ['-version']);
-    const lines = stdout.trim().split('\n');
     status.xcodeInstalled = true;
-    status.xcodeVersion = lines[0];
+    status.xcodeVersion = stdout.trim().split('\n')[0];
     logger.info({ version: status.xcodeVersion }, 'Xcode found');
   } catch {
     logger.error('Xcode not found');
   }
 
-  // Check Developer Mode (for connected devices)
-  // This would need a specific device UDID to check properly
-
-  // Check WDA Runner app
   try {
-    await execFileAsync('xcrun', ['simctl', 'listapps', 'booted']);
-    // On real device, we'd check differently
-    status.wdaRunnerInstalled = true;
-    logger.debug('WDA Runner check passed');
-  } catch {
-    logger.warn('Could not verify WDA Runner installation');
+    const wdaPath = resolveWDAPath();
+    status.wdaRunnerPath = wdaPath;
+    status.wdaRunnerInstalled = existsSync(wdaPath);
+  } catch (error) {
+    logger.warn({ error }, 'WebDriverAgent source not found');
   }
 
-  // Check signing identity
   try {
     const { stdout } = await execFileAsync('security', [
       'find-identity',
@@ -55,10 +75,12 @@ export async function verifyWDA(): Promise<WDAStatus> {
       '-p',
       'codesigning',
     ]);
-    const matches = stdout.match(/"([^"]+)"/g);
-    if (matches && matches.length > 0) {
-      status.signingIdentity = matches[0].replace(/"/g, '');
-      logger.info({ identity: status.signingIdentity }, 'Signing identity found');
+    const match = stdout.match(/"([^"]+)"/);
+    if (match) {
+      status.signingIdentity = match[1];
+      const team = match[1].match(/\(([A-Fa-f0-9]{10})\)$/);
+      if (team) status.teamId = team[1];
+      logger.info({ identity: status.signingIdentity, teamId: status.teamId }, 'Signing identity found');
     }
   } catch {
     logger.warn('No signing identity found');
@@ -67,14 +89,35 @@ export async function verifyWDA(): Promise<WDAStatus> {
   return status;
 }
 
+export interface BuildWDAOptions {
+  teamId?: string;
+  signingIdentity?: string;
+  configuration?: 'Debug' | 'Release';
+  derivedDataPath?: string;
+}
+
+/**
+ * Build the WebDriverAgentRunner test bundle for a physical device and return
+ * the path to the runnable XCTest runner app.
+ */
 export async function buildWDA(
   udid: string,
-  options?: { teamId?: string; configuration?: 'Debug' | 'Release' }
+  options?: BuildWDAOptions
 ): Promise<string> {
-  logger.info({ udid }, 'Building WebDriverAgent');
+  const projectPath = resolveWDAPath();
+  const teamId = options?.teamId ?? process.env.ATHENA_XCODE_TEAM_ID;
+  const signingIdentity =
+    options?.signingIdentity ?? process.env.ATHENA_XCODE_SIGNING_ID;
+  const configuration = options?.configuration ?? 'Debug';
 
-  const wdaPath = '/usr/local/lib/node_modules/appium/node_modules/appium-webdriveragent';
-  const projectPath = `${wdaPath}/WebDriverAgent.xcodeproj`;
+  if (!teamId) {
+    throw new Error(
+      'No Apple Developer Team ID configured. Set ATHENA_XCODE_TEAM_ID or pass teamId.',
+    );
+  }
+
+  const derivedDataPath =
+    options?.derivedDataPath ?? join(homedir(), 'Library/Developer/Xcode/DerivedDataAthenaWDA');
 
   const args = [
     '-project',
@@ -84,39 +127,51 @@ export async function buildWDA(
     '-destination',
     `id=${udid}`,
     '-configuration',
-    options?.configuration ?? 'Debug',
-    'test',
+    configuration,
+    '-derivedDataPath',
+    derivedDataPath,
+    'build-for-testing',
+    `DEVELOPMENT_TEAM=${teamId}`,
     'CODE_SIGNING_ALLOWED=YES',
   ];
 
-  if (options?.teamId) {
-    args.push(`DEVELOPMENT_TEAM=${options.teamId}`);
+  if (signingIdentity) {
+    args.push(`CODE_SIGN_IDENTITY=${signingIdentity}`);
   }
 
-  logger.debug({ args }, 'Running xcodebuild');
+  logger.info({ udid, teamId, signingIdentity }, 'Building WebDriverAgent');
 
   try {
-    const { stdout } = await execFileAsync('xcodebuild', args, { maxBuffer: 10 * 1024 * 1024 });
-    logger.info('WebDriverAgent built successfully');
-    return stdout;
+    await execFileAsync('xcodebuild', args, { maxBuffer: 20 * 1024 * 1024 });
+    const runnerApp = join(
+      derivedDataPath,
+      'Build/Products',
+      `${configuration}-iphoneos`,
+      'WebDriverAgentRunner-Runner.app',
+    );
+    if (!existsSync(runnerApp)) {
+      throw new Error(`WDA build succeeded but runner app missing: ${runnerApp}`);
+    }
+    logger.info({ runnerApp }, 'WebDriverAgent built successfully');
+    return runnerApp;
   } catch (error) {
     logger.error({ error }, 'Failed to build WebDriverAgent');
     throw error;
   }
 }
 
-export async function installWDA(udid: string): Promise<void> {
-  logger.info({ udid }, 'Installing WebDriverAgent');
+export async function installWDA(
+  udid: string,
+  runnerApp: string
+): Promise<void> {
+  logger.info({ udid, runnerApp }, 'Installing WebDriverAgent');
 
   try {
-    await execFileAsync('xcrun', [
-      'devicectl',
-      'device',
-      'install',
-      'app',
-      'WebDriverAgentRunner-Runner.app',
-      udid,
-    ]);
+    await execFileAsync(
+      'xcrun',
+      ['devicectl', 'device', 'install', 'app', '--device', udid, runnerApp],
+      { maxBuffer: 10 * 1024 * 1024 }
+    );
     logger.info('WebDriverAgent installed');
   } catch (error) {
     logger.error({ error }, 'Failed to install WebDriverAgent');
@@ -126,7 +181,7 @@ export async function installWDA(udid: string): Promise<void> {
 
 export async function launchWDA(
   udid: string,
-  bundleId: string = 'com.apple.WebDriverAgentRunner'
+  bundleId: string = WDA_RUNNER_BUNDLE_ID
 ): Promise<void> {
   logger.info({ udid, bundleId }, 'Launching WebDriverAgent');
 
@@ -136,9 +191,9 @@ export async function launchWDA(
       'device',
       'process',
       'launch',
-      '--bundle-id',
-      bundleId,
+      '--device',
       udid,
+      bundleId,
     ]);
     logger.info('WebDriverAgent launched');
   } catch (error) {

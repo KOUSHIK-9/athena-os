@@ -7,6 +7,13 @@ export const DriverConfigSchema = z.object({
   retries: z.number().default(3),
   wdaPath: z.string().optional(),
   wdaBundleId: z.string().default('com.apple.WebDriverAgentRunner'),
+  /** Hardware UDID (0000.../IOS17...) the driver must talk to, which can
+   * differ from the CoreDevice UUID used by `devicectl` orchestration. */
+  deviceUdid: z.string().optional(),
+  /** Apple Developer Team ID used to code-sign WebDriverAgent (xcodeOrgId). */
+  xcodeTeamId: z.string().optional(),
+  /** Codesigning identity (e.g. "Apple Development") for WDA (xcodeSigningId). */
+  xcodeSigningId: z.string().optional(),
 });
 
 export type DriverConfig = z.infer<typeof DriverConfigSchema>;
@@ -27,6 +34,9 @@ export function loadDriverConfig(): DriverConfig {
       : 3,
     wdaPath: process.env.ATHENA_WDA_PATH,
     wdaBundleId: 'com.apple.WebDriverAgentRunner',
+    deviceUdid: process.env.ATHENA_DRIVER_UDID || undefined,
+    xcodeTeamId: process.env.ATHENA_XCODE_TEAM_ID || undefined,
+    xcodeSigningId: process.env.ATHENA_XCODE_SIGNING_ID || undefined,
   });
 
   if (!parsed.success) {

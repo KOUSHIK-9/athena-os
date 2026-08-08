@@ -58,17 +58,26 @@ export class AppiumDriver implements Driver {
 
     const timeoutSeconds = this.driverConfig.timeout ?? config.timeout;
     const retries = this.driverConfig.retries ?? config.retries;
+    const udid = this.driverConfig.deviceUdid ?? config.deviceUdid;
 
     const caps = {
       platformName: 'iOS',
       'appium:automationName': 'XCUITest',
-      'appium:deviceName': config.deviceUdid,
-      'appium:udid': config.deviceUdid,
+      'appium:deviceName': udid,
+      'appium:udid': udid,
       'appium:bundleId': config.bundleId,
       'appium:noReset': true,
       'appium:fullReset': false,
       'appium:newCommandTimeout': Math.floor(timeoutSeconds / 1000),
+      'appium:xcodeOrgId': this.driverConfig.xcodeTeamId,
+      'appium:xcodeSigningId': this.driverConfig.xcodeSigningId,
     };
+
+    for (const key of Object.keys(caps)) {
+      if (caps[key as keyof typeof caps] === undefined) {
+        delete caps[key as keyof typeof caps];
+      }
+    }
 
     logger.debug({ caps }, 'Creating Appium session');
 
@@ -89,7 +98,7 @@ export class AppiumDriver implements Driver {
         platformName: 'iOS',
         platformVersion: await this.getPlatformVersion(),
         deviceName: await this.getDeviceName(),
-        udid: config.deviceUdid,
+        udid: udid || '',
         bundleId: config.bundleId,
       };
 
@@ -99,7 +108,7 @@ export class AppiumDriver implements Driver {
       logger.error({ error, config }, 'Failed to create Appium session');
       throw new AppiumSessionError(
         'Failed to create Appium session',
-        config.deviceUdid,
+        config.deviceUdid ?? udid ?? 'unknown',
         error instanceof Error ? error : undefined
       );
     }
@@ -290,7 +299,7 @@ export class AppiumDriver implements Driver {
 
       try {
         const element = (await retry(
-          () => this.client.$(`${resolved.strategy}=${resolved.value}`),
+          () => this.client.$(`${resolved.strategy}:${resolved.value}`),
           { retries: 2, delay: 500 }
         )) as ElementLike;
 
@@ -336,7 +345,8 @@ export class AppiumDriver implements Driver {
 
   private async getDeviceModel(): Promise<string> {
     try {
-      return (await this.client.execute('mobile: getDeviceInfo')?.model) ?? 'unknown';
+      const info = await this.client.execute('mobile: getDeviceInfo');
+      return info?.model ?? 'unknown';
     } catch {
       return 'unknown';
     }
