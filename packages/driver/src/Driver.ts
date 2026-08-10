@@ -22,6 +22,7 @@ export interface Driver {
   ): Promise<void>;
   screenshot(): Promise<Buffer>;
   getUITree(): Promise<UITree>;
+  sourceContains(text: string, timeoutMs?: number): Promise<boolean>;
   pressHome(): Promise<void>;
   back(): Promise<void>;
   wait(duration: number): Promise<void>;

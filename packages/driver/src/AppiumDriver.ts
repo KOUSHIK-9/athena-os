@@ -134,7 +134,15 @@ export class AppiumDriver implements Driver {
     logger.debug({ bundleId }, 'Launching app');
 
     try {
+      await this.client.execute('mobile: terminateApp', { bundleId });
+      await sleep(500);
+    } catch {
+      logger.trace({ bundleId }, 'App not running; skipping terminate during launch');
+    }
+
+    try {
       await this.client.execute('mobile: launchApp', { bundleId });
+      await sleep(800);
     } catch (error) {
       throw new AppiumDriverError(
         `Failed to launch app: ${bundleId}`,
@@ -181,21 +189,44 @@ export class AppiumDriver implements Driver {
   }
 
   private async typeIntoActiveField(text: string): Promise<void> {
+    let field = await this.findInputField();
+    if (!field) {
+      const search = await this.client.findElements(
+        'xpath',
+        '//*[@type="XCUIElementTypeButton"][@name="Search" or @label="Search"]'
+      );
+      if (search.length > 0) {
+        const searchRef = search[0]?.['element-6066-11e4-a52e-4f735466cecf'] ?? search[0]?.ELEMENT;
+        await this.client.elementClick(searchRef);
+        await sleep(600);
+        field = await this.findInputField();
+      }
+    }
+    if (!field) {
+      throw new AppiumElementNotFoundError(
+        '<active input>',
+        this.sessionId ?? 'unknown',
+        ['XCUIElementTypeSearchField', 'XCUIElementTypeTextField'],
+        new Error('No text input field found on the current screen')
+      );
+    }
+    const enabled = await this.client.getElementAttribute(field, 'enabled');
+    const visible = await this.client.getElementAttribute(field, 'visible');
+    if (enabled !== 'false' && visible !== 'false') {
+      await this.client.elementClick(field);
+      await sleep(300);
+    }
+    await this.client.elementSendKeys(field, text);
+  }
+
+  private async findInputField(): Promise<string | undefined> {
     for (const fieldType of ['XCUIElementTypeSearchField', 'XCUIElementTypeTextField']) {
       const elements = await this.client.findElements('xpath', `//*[@type="${fieldType}"]`);
       const elementId =
         elements[0]?.['element-6066-11e4-a52e-4f735466cecf'] ?? elements[0]?.ELEMENT;
-      if (elementId) {
-        await this.client.elementSendKeys(elementId, text);
-        return;
-      }
+      if (elementId) return elementId;
     }
-    throw new AppiumElementNotFoundError(
-      '<active input>',
-      this.sessionId ?? 'unknown',
-      ['XCUIElementTypeSearchField', 'XCUIElementTypeTextField'],
-      new Error('No text input field found on the current screen')
-    );
+    return undefined;
   }
 
   async swipe(
@@ -244,6 +275,24 @@ export class AppiumDriver implements Driver {
         error instanceof Error ? error : undefined
       );
     }
+  }
+
+  async sourceContains(text: string, timeoutMs = 2500, pollMs = 400): Promise<boolean> {
+    this.ensureSession();
+    const deadline = Date.now() + timeoutMs;
+    let source = '';
+    do {
+      try {
+        source = await this.client.getPageSource();
+        if (source.includes(text)) {
+          return true;
+        }
+      } catch (error) {
+        logger.trace({ error }, 'getPageSource failed while polling for text');
+      }
+      await sleep(pollMs);
+    } while (Date.now() < deadline);
+    return source.includes(text);
   }
 
   async pressHome(): Promise<void> {

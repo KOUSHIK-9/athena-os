@@ -1,5 +1,6 @@
-import type { Action } from '@athena-os/core';
+import type { Action, VerificationResult } from '@athena-os/core';
 import { ValidationError } from '@athena-os/shared';
+import { createVerificationResult } from '@athena-os/core';
 import { createCapability } from './helpers.js';
 import type { CapabilityRunContext } from './types.js';
 
@@ -17,9 +18,19 @@ async function execute(context: CapabilityRunContext) {
   return { metadata: { selector: action.selector, chars: action.text.length } };
 }
 
+async function verify(context: CapabilityRunContext): Promise<VerificationResult> {
+  if (context.action.type !== 'type') {
+    return createVerificationResult('session-healthy', Boolean(context.session), {});
+  }
+  const text = context.action.text ?? '';
+  const visible = await context.driver.sourceContains(text);
+  return createVerificationResult('text-visible', visible, { text });
+}
+
 export const typeCapability = createCapability({
   id: 'Type',
   kinds: ['type'],
   validate: assertType,
   execute,
+  verify,
 });

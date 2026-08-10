@@ -48,4 +48,34 @@ describe('Type Capability', () => {
       /text/
     );
   });
+
+  it('verifies text-visible when the typed text appears on screen', async () => {
+    const driver = fakeDriver({ sourceContains: async () => true });
+    const { result, verification } = await runCapability(
+      typeCapability,
+      fakeContext({
+        driver,
+        action: { type: 'type', text: 'Fitness', description: 'Type Fitness' },
+      })
+    );
+
+    expect(driver.calls).toContain('sourceContains');
+    expect(verification.strategy).toBe('text-visible');
+    expect(verification.verified).toBe(true);
+    expect(result.metadata?.chars).toBe(7);
+  });
+
+  it('fails verification when the typed text never appears on screen', async () => {
+    const driver = fakeDriver({ sourceContains: async () => false });
+    const { verification } = await runCapability(
+      typeCapability,
+      fakeContext({
+        driver,
+        action: { type: 'type', text: 'Fitness', description: 'Type Fitness' },
+      })
+    );
+
+    expect(verification.strategy).toBe('text-visible');
+    expect(verification.verified).toBe(false);
+  });
 });

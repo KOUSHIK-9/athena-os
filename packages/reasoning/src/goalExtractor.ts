@@ -69,22 +69,44 @@ export class DeterministicGoalExtractor implements GoalExtractor {
   }
 
   private extractFromText(text: string): Goal[] {
-    const parts = text.trim().split(/\s+/);
-    const verb = parts[0]?.toLowerCase() ?? '';
-    const kind = VERB_LEXICON[verb];
-    if (!kind) {
-      return [];
+    const clauses = splitClauses(text);
+    const goals: Goal[] = [];
+
+    for (const clause of clauses) {
+      const parts = clause.trim().split(/\s+/);
+      const verb = parts[0]?.toLowerCase() ?? '';
+      const kind = VERB_LEXICON[verb];
+      if (!kind) {
+        continue;
+      }
+
+      const target = cleanTarget(parts.slice(1).join(' '));
+
+      goals.push({
+        id: `goal-${goals.length + 1}`,
+        kind,
+        description: clause.trim(),
+        ...(target.length > 0 ? { target } : {}),
+      });
     }
 
-    const target = cleanTarget(parts.slice(1).join(' '));
-
-    return [
-      {
-        id: `goal-1`,
-        kind,
-        description: text.trim(),
-        ...(target.length > 0 ? { target } : {}),
-      },
-    ];
+    return goals;
   }
+}
+
+/** Split a sentence into goal clauses at sequencing conjunctions. */
+export function splitClauses(text: string): string[] {
+  const parts = text
+    .trim()
+    .split(/\s+(?:and|then|afterwards|after that)\s+/i)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+
+  const deduped: string[] = [];
+  for (const part of parts) {
+    if (deduped[deduped.length - 1] !== part) {
+      deduped.push(part);
+    }
+  }
+  return deduped;
 }
