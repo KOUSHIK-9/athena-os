@@ -44,7 +44,13 @@ describe('DeterministicPlanValidator', () => {
     expect(result.trace.length).toBeGreaterThan(0);
     expect(result.trace.every((t) => t.outcome === 'passed')).toBe(true);
     expect(result.trace.map((t) => t.code)).toEqual(
-      expect.arrayContaining(['PLAN_EMPTY', 'STEP_DUPLICATE_ID', 'STEP_UNKNOWN_CAPABILITY', 'STEP_UNKNOWN_DEPENDENCY', 'PLAN_CYCLIC'])
+      expect.arrayContaining([
+        'PLAN_EMPTY',
+        'STEP_DUPLICATE_ID',
+        'STEP_UNKNOWN_CAPABILITY',
+        'STEP_UNKNOWN_DEPENDENCY',
+        'PLAN_CYCLIC',
+      ])
     );
   });
 
@@ -66,10 +72,7 @@ describe('DeterministicPlanValidator', () => {
 
   it('rejects duplicate step ids (STEP_DUPLICATE_ID)', () => {
     const plan = samplePlan({
-      steps: [
-        step('step1', 'app-launch'),
-        { ...step('step1', 'app-launch'), description: 'dup' },
-      ],
+      steps: [step('step1', 'app-launch'), { ...step('step1', 'app-launch'), description: 'dup' }],
     });
     const result = validator.validatePlan(plan, registry(...capabilities));
     expect(result.valid).toBe(false);
@@ -86,10 +89,7 @@ describe('DeterministicPlanValidator', () => {
 
   it('rejects cycles (PLAN_CYCLIC)', () => {
     const plan = samplePlan({
-      steps: [
-        step('a', 'app-launch', ['b']),
-        step('b', 'app-launch', ['a']),
-      ],
+      steps: [step('a', 'app-launch', ['b']), step('b', 'app-launch', ['a'])],
     });
     const result = validator.validatePlan(plan, registry(...capabilities));
     expect(result.valid).toBe(false);
@@ -101,10 +101,7 @@ describe('DeterministicPlanValidator', () => {
 
   it('warns when a step depends on a later-declared step (STEP_OUT_OF_ORDER)', () => {
     const plan = samplePlan({
-      steps: [
-        step('step1', 'app-launch', ['step2']),
-        step('step2', 'settings-toggle'),
-      ],
+      steps: [step('step1', 'app-launch', ['step2']), step('step2', 'settings-toggle')],
     });
     const result = validator.validatePlan(plan, registry(...capabilities));
     expect(result.valid).toBe(true);

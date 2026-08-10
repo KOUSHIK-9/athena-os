@@ -7,7 +7,9 @@ import type {
 } from '@athena-os/core';
 import { DeterministicSimulator } from './simulator.js';
 
-function descriptor(overrides: Partial<CapabilityDescriptor> & { id: string }): CapabilityDescriptor {
+function descriptor(
+  overrides: Partial<CapabilityDescriptor> & { id: string }
+): CapabilityDescriptor {
   return {
     description: 'test capability',
     goalKinds: [],

@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type {
-  CapabilityDescriptor,
-  CapabilityRegistry,
-  Constraint,
-  Intent,
-} from '@athena-os/core';
+import type { CapabilityDescriptor, CapabilityRegistry, Constraint, Intent } from '@athena-os/core';
 import { DeterministicReasoningEngine } from './engine.js';
 
 const registry: CapabilityRegistry = {
@@ -45,7 +40,13 @@ describe('DeterministicReasoningEngine', () => {
 
   it('rejects the intent when a goal is forbidden by a constraint', () => {
     const constraints: Constraint[] = [
-      { id: 'c1', kind: 'forbid', goalKind: 'openApp', category: 'hard', reason: 'app launching disabled' },
+      {
+        id: 'c1',
+        kind: 'forbid',
+        goalKind: 'openApp',
+        category: 'hard',
+        reason: 'app launching disabled',
+      },
     ];
     const result = engine.reason(sampleIntent({ constraints }));
     expect(result.kind).toBe('rejected');
@@ -61,6 +62,6 @@ describe('DeterministicReasoningEngine', () => {
     );
     expect(result.kind).toBe('clarificationRequired');
     if (result.kind !== 'clarificationRequired') return;
-    expect(result.reason).toContain("no capability for goals: flyPlane");
+    expect(result.reason).toContain('no capability for goals: flyPlane');
   });
 });

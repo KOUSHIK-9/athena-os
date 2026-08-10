@@ -89,12 +89,7 @@ function parseSimulatorRuntime(runtime: string): string {
 }
 
 async function listSimulators(): Promise<SimulatorEntry[]> {
-  const { stdout } = await execFileAsync('xcrun', [
-    'simctl',
-    'list',
-    'devices',
-    '--json',
-  ]);
+  const { stdout } = await execFileAsync('xcrun', ['simctl', 'list', 'devices', '--json']);
   const data = JSON.parse(stdout);
 
   const entries: SimulatorEntry[] = [];
@@ -151,11 +146,7 @@ export const simctlDiscovery = new SimctlDiscovery();
 export async function discoverDevices(): Promise<ConnectedDevice[]> {
   logger.debug('Discovering connected iOS devices');
 
-  const providers: DeviceDiscovery[] = [
-    devicectlDiscovery,
-    simctlDiscovery,
-    libIMobileDiscovery,
-  ];
+  const providers: DeviceDiscovery[] = [devicectlDiscovery, simctlDiscovery, libIMobileDiscovery];
 
   const seen = new Set<string>();
   const all: ConnectedDevice[] = [];
@@ -329,9 +320,7 @@ export async function selectDevice(
   // For now, throw an error requiring explicit UDID
   throw new Error(
     `Multiple devices connected. Please specify UDID via ATHENA_DEVICE_UDID:\n` +
-      ready
-        .map((d) => `  ${d.udid} - ${d.name} (${d.model}, iOS ${d.osVersion})`)
-        .join('\n')
+      ready.map((d) => `  ${d.udid} - ${d.name} (${d.model}, iOS ${d.osVersion})`).join('\n')
   );
 }
 

@@ -1,8 +1,4 @@
-import type {
-  CapabilityRegistry,
-  ExecutionPlan,
-  PlanStep,
-} from '@athena-os/core';
+import type { CapabilityRegistry, ExecutionPlan, PlanStep } from '@athena-os/core';
 
 export type DiagnosticSeverity = 'error' | 'warning' | 'suggestion';
 export type ValidationPhase = 'structural' | 'semantic';
@@ -43,17 +39,11 @@ export interface PlanValidationResult {
  *    open; the checks are not yet implemented.
  */
 export interface PlanValidator {
-  validatePlan(
-    plan: ExecutionPlan,
-    registry: CapabilityRegistry
-  ): PlanValidationResult;
+  validatePlan(plan: ExecutionPlan, registry: CapabilityRegistry): PlanValidationResult;
 }
 
 export class DeterministicPlanValidator implements PlanValidator {
-  validatePlan(
-    plan: ExecutionPlan,
-    registry: CapabilityRegistry
-  ): PlanValidationResult {
+  validatePlan(plan: ExecutionPlan, registry: CapabilityRegistry): PlanValidationResult {
     const errors: Diagnostic[] = [];
     const warnings: Diagnostic[] = [];
     const suggestions: Diagnostic[] = [];

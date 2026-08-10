@@ -9,13 +9,7 @@ export const GoalSchema = z.object({
 
 export type Goal = z.infer<typeof GoalSchema>;
 
-export const ConstraintCategorySchema = z.enum([
-  'hard',
-  'soft',
-  'safety',
-  'temporal',
-  'resource',
-]);
+export const ConstraintCategorySchema = z.enum(['hard', 'soft', 'safety', 'temporal', 'resource']);
 
 export type ConstraintCategory = z.infer<typeof ConstraintCategorySchema>;
 

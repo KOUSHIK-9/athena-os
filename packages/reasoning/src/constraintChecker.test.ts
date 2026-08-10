@@ -102,7 +102,7 @@ describe('DeterministicConstraintChecker', () => {
     expect(result.rejected).toEqual([]);
   });
 
-  it("matches target-scoped constraints only on the declared target", () => {
+  it('matches target-scoped constraints only on the declared target', () => {
     const alice: Goal = { id: 'g1', kind: 'sendMessage', description: 'to Alice', target: 'Alice' };
     const bob: Goal = { id: 'g2', kind: 'sendMessage', description: 'to Bob', target: 'Bob' };
     const constraints: Constraint[] = [

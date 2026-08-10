@@ -48,10 +48,8 @@ export class DeterministicExecutionGraphBuilder implements ExecutionGraphBuilder
       for (const stepId of ready) {
         order.push(stepId);
         const dependencies = dependsOn.get(stepId) ?? [];
-        const level = dependencies.reduce(
-          (max, dep) => Math.max(max, levelOf.get(dep) ?? 0),
-          -1
-        ) + 1;
+        const level =
+          dependencies.reduce((max, dep) => Math.max(max, levelOf.get(dep) ?? 0), -1) + 1;
         levelOf.set(stepId, level);
 
         for (const dependent of dependents.get(stepId) ?? []) {

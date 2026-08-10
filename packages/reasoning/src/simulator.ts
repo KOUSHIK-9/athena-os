@@ -5,7 +5,8 @@ import type {
   SimulationEnvironment,
 } from '@athena-os/core';
 
-export type PredictedOutcome = 'success' | 'likely_success' | 'likely_failure' | 'failure' | 'unknown';
+export type PredictedOutcome =
+  'success' | 'likely_success' | 'likely_failure' | 'failure' | 'unknown';
 
 export interface StepPrediction {
   stepId: string;
@@ -88,9 +89,7 @@ export class DeterministicSimulator implements Simulator {
     }
 
     const overallConfidence =
-      steps.length === 0
-        ? 0
-        : steps.reduce((sum, step) => sum + step.confidence, 0) / steps.length;
+      steps.length === 0 ? 0 : steps.reduce((sum, step) => sum + step.confidence, 0) / steps.length;
 
     return { steps, overallConfidence, blocked, warnings };
   }
@@ -114,9 +113,7 @@ function predictStep(
     };
   }
 
-  const missing = requiresResources.filter(
-    (resource) => !availableResources.includes(resource)
-  );
+  const missing = requiresResources.filter((resource) => !availableResources.includes(resource));
   if (missing.length > 0) {
     reasons.push(`missing resource(s): ${missing.join(', ')}`);
   }

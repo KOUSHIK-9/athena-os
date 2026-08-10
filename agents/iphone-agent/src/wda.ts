@@ -18,7 +18,7 @@ export function resolveWDAPath(override?: string): string {
     process.env.ATHENA_WDA_PATH,
     join(
       homedir(),
-      '.appium/node_modules/appium-xcuitest-driver/node_modules/appium-webdriveragent/WebDriverAgent.xcodeproj',
+      '.appium/node_modules/appium-xcuitest-driver/node_modules/appium-webdriveragent/WebDriverAgent.xcodeproj'
     ),
   ].filter(Boolean) as string[];
 
@@ -28,7 +28,7 @@ export function resolveWDAPath(override?: string): string {
 
   throw new Error(
     'WebDriverAgent source not found. Install the xcuitest driver (appium driver install xcuitest) ' +
-      'or set ATHENA_WDA_PATH.',
+      'or set ATHENA_WDA_PATH.'
   );
 }
 
@@ -80,7 +80,10 @@ export async function verifyWDA(): Promise<WDAStatus> {
       status.signingIdentity = match[1];
       const team = match[1].match(/\(([A-Fa-f0-9]{10})\)$/);
       if (team) status.teamId = team[1];
-      logger.info({ identity: status.signingIdentity, teamId: status.teamId }, 'Signing identity found');
+      logger.info(
+        { identity: status.signingIdentity, teamId: status.teamId },
+        'Signing identity found'
+      );
     }
   } catch {
     logger.warn('No signing identity found');
@@ -100,19 +103,15 @@ export interface BuildWDAOptions {
  * Build the WebDriverAgentRunner test bundle for a physical device and return
  * the path to the runnable XCTest runner app.
  */
-export async function buildWDA(
-  udid: string,
-  options?: BuildWDAOptions
-): Promise<string> {
+export async function buildWDA(udid: string, options?: BuildWDAOptions): Promise<string> {
   const projectPath = resolveWDAPath();
   const teamId = options?.teamId ?? process.env.ATHENA_XCODE_TEAM_ID;
-  const signingIdentity =
-    options?.signingIdentity ?? process.env.ATHENA_XCODE_SIGNING_ID;
+  const signingIdentity = options?.signingIdentity ?? process.env.ATHENA_XCODE_SIGNING_ID;
   const configuration = options?.configuration ?? 'Debug';
 
   if (!teamId) {
     throw new Error(
-      'No Apple Developer Team ID configured. Set ATHENA_XCODE_TEAM_ID or pass teamId.',
+      'No Apple Developer Team ID configured. Set ATHENA_XCODE_TEAM_ID or pass teamId.'
     );
   }
 
@@ -147,7 +146,7 @@ export async function buildWDA(
       derivedDataPath,
       'Build/Products',
       `${configuration}-iphoneos`,
-      'WebDriverAgentRunner-Runner.app',
+      'WebDriverAgentRunner-Runner.app'
     );
     if (!existsSync(runnerApp)) {
       throw new Error(`WDA build succeeded but runner app missing: ${runnerApp}`);
@@ -160,10 +159,7 @@ export async function buildWDA(
   }
 }
 
-export async function installWDA(
-  udid: string,
-  runnerApp: string
-): Promise<void> {
+export async function installWDA(udid: string, runnerApp: string): Promise<void> {
   logger.info({ udid, runnerApp }, 'Installing WebDriverAgent');
 
   try {

@@ -39,10 +39,7 @@ describe('DeterministicCapabilityMatcher', () => {
     expect(result.goals).toHaveLength(1);
     const options = result.goals[0];
     expect(options.goal).toEqual(goals[0]);
-    expect(options.candidates.map((c) => c.capability.id)).toEqual([
-      'app-launch',
-      'app-activate',
-    ]);
+    expect(options.candidates.map((c) => c.capability.id)).toEqual(['app-launch', 'app-activate']);
     expect(options.candidates[0].reason).toContain("declares goal kind 'openApp'");
   });
 
@@ -51,7 +48,9 @@ describe('DeterministicCapabilityMatcher', () => {
     expect(result.goals).toHaveLength(1);
     expect(result.unmatched).toHaveLength(1);
     expect(result.unmatched[0].goal).toEqual(goals[1]);
-    expect(result.unmatched[0].reason).toContain("no registered capability satisfies goal kind 'sendMessage'");
+    expect(result.unmatched[0].reason).toContain(
+      "no registered capability satisfies goal kind 'sendMessage'"
+    );
   });
 
   it('leaves candidates empty when no goals are accepted', () => {
