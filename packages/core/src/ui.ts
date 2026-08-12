@@ -31,6 +31,12 @@ export interface DriverCapabilities {
   [key: string]: unknown;
 }
 
+/** The application currently foreground on the device, if determinable. */
+export interface ActiveApp {
+  bundleId: string;
+  name?: string;
+}
+
 export type ScreenStateSnapshot = Pick<ScreenState, 'uiTree'> & {
   capturedAt: string;
   screenshot?: Omit<Screenshot, 'capturedAt'>;

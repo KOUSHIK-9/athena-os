@@ -1,4 +1,4 @@
-import type { CapabilityRegistry, ExecutionPlan, Intent } from '@athena-os/core';
+import type { CapabilityRegistry, ExecutionPlan, Goal, Intent } from '@athena-os/core';
 
 /**
  * RFC-0012 Reasoning Backend contract.
@@ -31,7 +31,7 @@ import type { CapabilityRegistry, ExecutionPlan, Intent } from '@athena-os/core'
  * changing the rest of the engine (RFC-0012 §Contract).
  */
 export type ReasoningBackendResult =
-  | { kind: 'executionPlan'; plan: ExecutionPlan }
+  | { kind: 'executionPlan'; plan: ExecutionPlan; goals?: Goal[] }
   | { kind: 'clarificationRequired'; reason: string }
   | { kind: 'rejected'; reasons: string[] };
 

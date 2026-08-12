@@ -10,6 +10,8 @@ import {
   type ReasoningResult,
 } from '@athena-os/reasoning';
 import {
+  AppleModelClient,
+  appleModelConfigFromEnv,
   LlmReasoningBackend,
   OpenAIModelClient,
   openAIConfigFromEnv,
@@ -24,9 +26,37 @@ import { iphoneRunRegistry } from './registry.js';
  * Nothing here touches a device; execution is a separate concern.
  */
 
-export type BackendPreference = 'auto' | 'deterministic' | 'llm';
+export type BackendPreference = 'auto' | 'deterministic' | 'llm' | 'apple';
 
 const OPENAI_KEY_ENV = 'ATHENA_OPENAI_API_KEY';
+
+/**
+ * Observation from a failed execution attempt, used for step-level
+ * re-planning. The original user goal stays stable; this tells the
+ * model what's been accomplished and what still needs to happen.
+ */
+export interface ObservationContext {
+  /** Original user goal, kept stable across re-plans. */
+  originalGoal: string;
+  /** Steps that already succeeded (verified) before the failure. */
+  accomplishedSteps: Array<{ description: string; capabilityId: string }>;
+  /** Recent executed steps (succeeded and failed) for context. */
+  executedSteps?: Array<{ description: string; capabilityId?: string; success: boolean }>;
+  /** The capability ID that failed (e.g. 'tap', 'type'). */
+  failedCapability: string;
+  /** The description of the failed step (the failed action). */
+  failedDescription: string;
+  /** Error message from the failed execution (failure reason). */
+  error: string;
+  /** Foreground app (name + bundle id) at the time of failure, if known. */
+  currentApp?: string;
+  /** Base64 screenshot captured at the time of failure, if available. */
+  screenshot?: string;
+  /** Accessibility tree / semantic model at the time of failure, if captured. */
+  screenState?: string;
+  /** Descriptions of the plan steps that still remain after the failure. */
+  remainingSteps?: string[];
+}
 
 /**
  * Structured `intent.goals` are consumed verbatim by every backend
@@ -43,15 +73,79 @@ function enrichIntentWithExtractedGoals(intent: Intent): Intent {
   return goals.length > 0 ? { ...intent, goals } : intent;
 }
 
+/**
+ * Build an enriched prompt that preserves the original user goal and adds
+ * step-level observation context. The model sees what's been accomplished,
+ * what failed, and what still needs to happen — then produces a plan that
+ * continues from the current state, not from scratch.
+ */
+export function promptWithObservation(original: string, observation: ObservationContext): string {
+  const parts = [`Original user goal: ${original}`, ''];
+
+  if (observation.currentApp) {
+    parts.push(`Current app: ${observation.currentApp}`);
+  }
+
+  if (observation.screenState) {
+    parts.push(`Current screen (accessibility tree): ${observation.screenState}`);
+  }
+
+  if (observation.accomplishedSteps.length > 0) {
+    parts.push('Verified actions already completed:');
+    for (const step of observation.accomplishedSteps) {
+      parts.push(`  ✓ ${step.description} (${step.capabilityId})`);
+    }
+    parts.push('');
+  }
+
+  if (observation.executedSteps && observation.executedSteps.length > 0) {
+    parts.push('Recent actions:');
+    for (const step of observation.executedSteps) {
+      parts.push(
+        `  ${step.success ? '✓' : '✗'} ${step.description}${
+          step.capabilityId ? ` (${step.capabilityId})` : ''
+        }`
+      );
+    }
+    parts.push('');
+  }
+
+  parts.push(
+    'Failed action:',
+    `  ✗ ${observation.failedDescription} (${observation.failedCapability})`,
+    `Failure reason: ${observation.error}`
+  );
+
+  if (observation.remainingSteps && observation.remainingSteps.length > 0) {
+    parts.push('', 'Remaining to accomplish:');
+    for (const step of observation.remainingSteps) {
+      parts.push(`  - ${step}`);
+    }
+  }
+
+  parts.push(
+    '',
+    'Produce a plan that continues from the current state.',
+    'Do NOT repeat the verified actions already completed.',
+    'Only plan the remaining actions needed to satisfy the original goal.'
+  );
+
+  return parts.join('\n');
+}
+
 export interface ReasonOptions {
   backend?: BackendPreference;
   environment?: SimulationEnvironment;
+  /** Observation from a failed attempt, when re-planning. */
+  observation?: ObservationContext;
 }
 
 export interface RunReasoning {
   intent: Intent;
   backendId: string;
   result: ReasoningResult;
+  /** Original user prompt before observation enrichment. */
+  originalPrompt: string;
 }
 
 export function makeIntent(prompt: string): Intent {
@@ -71,6 +165,11 @@ export function resolveBackend(preference: BackendPreference = 'auto'): {
     return { backend: new DeterministicReasoningBackend(), id: 'deterministic' };
   }
 
+  if (preference === 'apple') {
+    const modelClient = new AppleModelClient(appleModelConfigFromEnv());
+    return { backend: new LlmReasoningBackend(modelClient), id: `apple:${modelClient.id}` };
+  }
+
   if (preference === 'llm' || (preference === 'auto' && !!process.env[OPENAI_KEY_ENV])) {
     const modelClient = new OpenAIModelClient(openAIConfigFromEnv());
     return { backend: new LlmReasoningBackend(modelClient), id: `llm:${modelClient.id}` };
@@ -80,8 +179,25 @@ export function resolveBackend(preference: BackendPreference = 'auto'): {
 }
 
 export function reasonForRun(prompt: string, options: ReasonOptions = {}): RunReasoning {
-  const intent = enrichIntentWithExtractedGoals(makeIntent(prompt));
   const { backend, id } = resolveBackend(options.backend ?? 'auto');
+
+  // The explicit Apple backend must call AppleModelClient.extractGoals(), which
+  // drives the on-device FoundationModels bridge, to produce its goals. Pre-filling
+  // intent.goals with the deterministic extractor would short-circuit
+  // LlmReasoningBackend.goalsFor (it returns pre-populated goals verbatim) and the
+  // Apple model would never be consulted — a silent deterministic bypass. So for
+  // backend=apple we hand the model an intent with empty goals and let it extract.
+  // Every other backend keeps the deterministic pre-fill (the historical default).
+  const intent =
+    options.backend === 'apple'
+      ? makeIntent(prompt)
+      : enrichIntentWithExtractedGoals(makeIntent(prompt));
+
+  // When re-planning, enrich the intent text with observation context.
+  // The original goals are preserved — only the text sent to the model changes.
+  if (options.observation) {
+    intent.text = promptWithObservation(prompt, options.observation);
+  }
 
   const engine = new ReasoningEngine(iphoneRunRegistry, {
     backend,
@@ -90,5 +206,22 @@ export function reasonForRun(prompt: string, options: ReasonOptions = {}): RunRe
     executionGraphBuilder: new DeterministicExecutionGraphBuilder(),
   });
 
-  return { intent, backendId: id, result: engine.reason(intent, options.environment) };
+  const result = engine.reason(intent, options.environment);
+
+  // Persist the model-extracted goals onto the intent we own so downstream
+  // execution (`planToAction`) can resolve concrete targets (app name, element
+  // label, typed text) by `goalId`. The deterministic backend pre-fills
+  // `intent.goals` itself, so this is a no-op there; the model backends return
+  // `result.goals`, which we write back here rather than mutating the backend's
+  // input intent (which callers may reuse across backends, e.g. conformance).
+  if (result.kind === 'executionPlan' && result.goals) {
+    intent.goals = result.goals;
+  }
+
+  return {
+    intent,
+    backendId: id,
+    result,
+    originalPrompt: prompt,
+  };
 }

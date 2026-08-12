@@ -228,9 +228,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           },
           backend: {
             type: 'string',
-            enum: ['auto', 'deterministic', 'llm'],
+            enum: ['auto', 'deterministic', 'llm', 'apple'],
             description:
-              'Reasoning backend: auto (LLM when ATHENA_OPENAI_API_KEY is set, else deterministic), deterministic, llm',
+              'Reasoning backend: auto (LLM when ATHENA_OPENAI_API_KEY is set, else deterministic), deterministic, llm, apple (Apple Foundation Models on-device)',
           },
         },
         required: ['prompt'],

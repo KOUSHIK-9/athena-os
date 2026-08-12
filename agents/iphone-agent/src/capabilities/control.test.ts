@@ -38,16 +38,42 @@ describe('Scroll Capability', () => {
 });
 
 describe('Home Capability', () => {
-  it('executes pressHome', async () => {
-    const driver = fakeDriver();
+  it('executes pressHome and confirms the home screen when SpringBoard is foreground', async () => {
+    const driver = fakeDriver({
+      getActiveApp: async () => ({ bundleId: 'com.apple.springboard' }),
+    });
     const { verification } = await runCapability(
       homeCapability,
       fakeContext({ driver, action: { type: 'pressHome', description: 'Go home' } })
     );
 
     expect(driver.calls).toContain('pressHome');
-    expect(verification.strategy).toBe('session-healthy');
+    expect(verification.strategy).toBe('home-screen');
     expect(verification.verified).toBe(true);
+  });
+
+  it('verifies home when the driver cannot report the foreground app', async () => {
+    const driver = fakeDriver();
+    const { verification } = await runCapability(
+      homeCapability,
+      fakeContext({ driver, action: { type: 'pressHome', description: 'Go home' } })
+    );
+
+    expect(verification.strategy).toBe('home-screen');
+    expect(verification.verified).toBe(true);
+  });
+
+  it('fails verification when another app remains foreground after pressHome', async () => {
+    const driver = fakeDriver({
+      getActiveApp: async () => ({ bundleId: 'com.apple.maps' }),
+    });
+    const { verification } = await runCapability(
+      homeCapability,
+      fakeContext({ driver, action: { type: 'pressHome', description: 'Go home' } })
+    );
+
+    expect(verification.strategy).toBe('home-screen');
+    expect(verification.verified).toBe(false);
   });
 });
 

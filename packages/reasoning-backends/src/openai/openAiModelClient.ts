@@ -1,6 +1,6 @@
 import type { Intent } from '@athena-os/core';
-import { z } from 'zod';
-import type { ExtractedGoal, ModelClient, ModelExtraction } from '../llm/modelClient.js';
+import type { ModelClient, ModelExtraction } from '../llm/modelClient.js';
+import { SYSTEM_PROMPT, parseGoalsJson as sharedParseGoalsJson } from '../llm/goalPrompt.js';
 import type { ChatCompletionProvider, ChatMessage } from './chatCompletionProvider.js';
 import { OpenAICompatibleHttpProvider } from './openAiHttpProvider.js';
 import { OpenAIError } from './openAiHttpProvider.js';
@@ -15,26 +15,10 @@ import type { OpenAIConfig } from './openAiConfig.js';
  * keeps the canonical assembly.
  */
 
-const MAX_GOALS = 16;
-
-const GOALS_PAYLOAD_SCHEMA = z.object({
-  goals: z
-    .array(z.object({ kind: z.string().min(1), description: z.string().default('') }))
-    .max(MAX_GOALS),
-  clarification: z.string().optional(),
-});
-
-const SYSTEM_PROMPT = [
-  'You are Athena, a goal extractor for a cognitive execution platform.',
-  'Analyze the user intent and return ONLY a JSON object of the form',
-  '{"goals":[{"kind":"<goal kind>","description":"<description>"}],"clarification":"<optional reason>"}.',
-  'Use a single, concise goal kind per verb phrase. The "description" must',
-  "preserve the user's concrete targets verbatim — quoted strings, element",
-  'labels, app names and text to enter must appear exactly as the user wrote',
-  'them (e.g. "Tap \\"Continue\\"" stays "Tap \\"Continue\\""). Do not paraphrase',
-  'away the target. If the intent is ambiguous or',
-  'unfulfillable, return {"goals":[],"clarification":"<why>"}.',
-].join('\n');
+/** Parse a model answer into a `ModelExtraction`; OpenAI-flavored errors. */
+export function parseGoalsJson(content: string, intent: Intent): ModelExtraction {
+  return sharedParseGoalsJson(content, intent, (message) => new OpenAIError('OUTPUT', message));
+}
 
 export class OpenAIModelClient implements ModelClient {
   readonly id: string;
@@ -68,41 +52,4 @@ export class OpenAIModelClient implements ModelClient {
 
     return parseGoalsJson(answer, intent);
   }
-}
-
-export function parseGoalsJson(content: string, intent: Intent): ModelExtraction {
-  let text = content.trim();
-  const fenced = /^\s*```(?:json)?\s*\n([\s\S]*?)\n?\s*```\s*$/.exec(text);
-  if (fenced) {
-    text = fenced[1].trim();
-  }
-
-  let data: unknown;
-  try {
-    data = JSON.parse(text);
-  } catch (error) {
-    throw new OpenAIError('OUTPUT', `model returned invalid JSON: ${String(error)}`);
-  }
-
-  const parsed = GOALS_PAYLOAD_SCHEMA.safeParse(data);
-  if (!parsed.success) {
-    throw new OpenAIError(
-      'OUTPUT',
-      `model output failed validation: ${parsed.error.issues.map((issue) => issue.path.join('.') + ' ' + issue.message).join('; ')}`
-    );
-  }
-
-  const goals: ExtractedGoal[] = parsed.data.goals.map((goal) => ({
-    kind: goal.kind,
-    description: goal.description.length > 0 ? goal.description : (intent.text ?? ''),
-  }));
-
-  if (goals.length === 0) {
-    return {
-      goals: [],
-      clarification: parsed.data.clarification ?? 'the model returned no extractable goals',
-    };
-  }
-
-  return { goals };
 }

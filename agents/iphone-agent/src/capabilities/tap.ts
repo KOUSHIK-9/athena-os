@@ -1,7 +1,9 @@
-import type { Action } from '@athena-os/core';
+import type { Action, VerificationResult } from '@athena-os/core';
+import { createVerificationResult } from '@athena-os/core';
 import { ValidationError } from '@athena-os/shared';
 import { createCapability } from './helpers.js';
 import type { CapabilityRunContext } from './types.js';
+import { screenIsHealthy } from './screen.js';
 
 function assertTap(action: Action): asserts action is Extract<Action, { type: 'tap' }> {
   if (action.type !== 'tap') return;
@@ -17,9 +19,18 @@ async function execute(context: CapabilityRunContext) {
   return { metadata: { selector: action.selector } };
 }
 
+async function verify(context: CapabilityRunContext): Promise<VerificationResult> {
+  if (context.config?.verifyAppState) {
+    const healthy = await screenIsHealthy(context);
+    return createVerificationResult('app-screen-observed', healthy, {});
+  }
+  return createVerificationResult('screen-observed', true, {});
+}
+
 export const tapCapability = createCapability({
   id: 'Tap',
   kinds: ['tap'],
   validate: assertTap,
   execute,
+  verify,
 });

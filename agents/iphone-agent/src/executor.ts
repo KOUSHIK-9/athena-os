@@ -2,6 +2,7 @@ import { type Executor, type Session, type SessionConfig } from '@athena-os/exec
 import {
   type Action,
   type ActionResult,
+  type ActiveApp,
   type ExecutionMetadata,
   type VerificationResult,
   createExecutionMetadata,
@@ -250,6 +251,16 @@ export class iPhoneExecutor implements Executor {
       return managed.driver.isSessionActive();
     } catch {
       return false;
+    }
+  }
+
+  async getActiveApp(): Promise<ActiveApp | undefined> {
+    if (!this.currentSession) return undefined;
+    try {
+      const managed = await sessionManager.getSession(this.currentSession.deviceUdid);
+      return await managed.driver.getActiveApp();
+    } catch {
+      return undefined;
     }
   }
 

@@ -21,6 +21,9 @@ export function fakeDriver(overrides: Partial<Driver> = {}): Driver & { calls: s
     async getUITree() {
       return { type: 'XCUIElementTypeApplication', children: [] };
     },
+    async getActiveApp() {
+      return undefined;
+    },
     async sourceContains() {
       return true;
     },

@@ -17,8 +17,50 @@ describe('Tap Capability', () => {
 
     expect(driver.calls).toContain('tap');
     expect(result.metadata?.selector).toEqual(selector);
-    expect(verification.strategy).toBe('session-healthy');
+    expect(verification.strategy).toBe('screen-observed');
     expect(verification.verified).toBe(true);
+  });
+
+  it('verifies the screen is observed after a tap when verifyAppState is enabled', async () => {
+    const driver = fakeDriver();
+    const { verification } = await runCapability(
+      tapCapability,
+      fakeContext({
+        driver,
+        action: {
+          type: 'tap',
+          selector: { type: 'accessibilityId', value: 'btn' },
+          description: 'Tap',
+        },
+        config: { ...fakeContext().config, verifyAppState: true },
+      })
+    );
+
+    expect(verification.strategy).toBe('app-screen-observed');
+    expect(verification.verified).toBe(true);
+  });
+
+  it('fails verification when the screen is blank after a tap', async () => {
+    const driver = fakeDriver({
+      getUITree: async () => {
+        throw new Error('no tree');
+      },
+    });
+    const { verification } = await runCapability(
+      tapCapability,
+      fakeContext({
+        driver,
+        action: {
+          type: 'tap',
+          selector: { type: 'accessibilityId', value: 'btn' },
+          description: 'Tap',
+        },
+        config: { ...fakeContext().config, verifyAppState: true },
+      })
+    );
+
+    expect(verification.strategy).toBe('app-screen-observed');
+    expect(verification.verified).toBe(false);
   });
 
   it('rejects a tap without a selector', () => {

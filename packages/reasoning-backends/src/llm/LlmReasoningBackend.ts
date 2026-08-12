@@ -75,7 +75,7 @@ export class LlmReasoningBackend implements ReasoningBackend {
       })),
     });
 
-    return { kind: 'executionPlan', plan };
+    return { kind: 'executionPlan', plan, goals };
   }
 
   private goalsFor(intent: Intent): { goals: Goal[]; clarification?: string } {
@@ -91,12 +91,24 @@ export class LlmReasoningBackend implements ReasoningBackend {
       return { goals: [], clarification: extraction.clarification };
     }
 
-    return {
-      goals: extraction.goals.map((extracted, index) => ({
-        id: `goal-${index + 1}`,
-        kind: extracted.kind,
-        description: extracted.description,
-      })),
-    };
+    const goals: Goal[] = extraction.goals.map((extracted, index) => ({
+      id: `goal-${index + 1}`,
+      kind: extracted.kind,
+      description: extracted.description,
+    }));
+
+    // Return the extracted goals so the caller can persist them on the intent
+    // for downstream execution. We deliberately do NOT mutate the input `intent`
+    // here: some call sites (e.g. conformance suites) reuse the same intent
+    // object across multiple backends, and a mutation would leak this backend's
+    // goals into the next one. The deterministic backend gets the same effect
+    // from `enrichIntentWithExtractedGoals` pre-filling `intent.goals`; the
+    // model backend's caller (`reasonForRun`) writes `result.goals` back onto
+    // the intent it owns. Execution (`planToAction`) resolves concrete targets
+    // (app name, element label, typed text) from these goals by `goalId` — the
+    // generic plan-step description ("Satisfy 'openApp' with 'launchApp'") does
+    // NOT carry them, so without this write-back every app/label/text argument
+    // falls back to the entire prompt and the plan is unresolvable.
+    return { goals };
   }
 }

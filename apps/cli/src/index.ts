@@ -574,7 +574,7 @@ program
   .option('--dry-run', 'Reason, validate and preview the plan without touching the device')
   .option(
     '-b, --backend <backend>',
-    'Reasoning backend: auto (default), deterministic, llm',
+    'Reasoning backend: auto (default), deterministic, llm, apple',
     'auto'
   )
   .option('-j, --json', 'Output the full run result as JSON')

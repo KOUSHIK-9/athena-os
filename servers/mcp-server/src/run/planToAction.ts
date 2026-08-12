@@ -13,7 +13,8 @@ import { resolveKnownAppBundleId } from '@athena-os/iphone-agent';
  */
 
 export type RunAction =
-  { ok: true; action: Action; label?: string } | { ok: false; stepId: string; reason: string };
+  | { ok: true; action: Action; label?: string; goalId: string; stepId: string }
+  | { ok: false; stepId: string; reason: string };
 
 const QUOTED = /"([^"]+)"/;
 
@@ -104,7 +105,9 @@ export function mapStepToAction(step: PlanStep, intent: Intent): RunAction {
     case 'launchApp': {
       const candidates = [
         goal.target,
+        firstQuoted(goal.description),
         stripLeadingNoise(goal.description),
+        firstQuoted(intentText),
         stripLeadingNoise(intentText),
         intentText,
       ];
@@ -131,6 +134,8 @@ export function mapStepToAction(step: PlanStep, intent: Intent): RunAction {
       return {
         ok: true,
         action: { type: 'launchApp', bundleId, description: `Launch ${candidate}` },
+        goalId: step.goalId,
+        stepId: step.id,
       };
     }
 
@@ -148,7 +153,13 @@ export function mapStepToAction(step: PlanStep, intent: Intent): RunAction {
           reason: 'tap step carries no element label to resolve on screen',
         };
       }
-      return { ok: true, action: { type: 'tap', description: `Tap ${label}` }, label };
+      return {
+        ok: true,
+        action: { type: 'tap', description: `Tap ${label}` },
+        label,
+        goalId: step.goalId,
+        stepId: step.id,
+      };
     }
 
     case 'type': {
@@ -166,20 +177,45 @@ export function mapStepToAction(step: PlanStep, intent: Intent): RunAction {
           reason: 'type step carries no text to enter',
         };
       }
-      return { ok: true, action: { type: 'type', text, description: `Type: ${text}` } };
+      return {
+        ok: true,
+        action: { type: 'type', text, description: `Type: ${text}` },
+        goalId: step.goalId,
+        stepId: step.id,
+      };
     }
 
     case 'pressHome':
-      return { ok: true, action: { type: 'pressHome', description: 'Press home button' } };
+      return {
+        ok: true,
+        action: { type: 'pressHome', description: 'Press home button' },
+        goalId: step.goalId,
+        stepId: step.id,
+      };
 
     case 'back':
-      return { ok: true, action: { type: 'back', description: 'Go back' } };
+      return {
+        ok: true,
+        action: { type: 'back', description: 'Go back' },
+        goalId: step.goalId,
+        stepId: step.id,
+      };
 
     case 'wait':
-      return { ok: true, action: { type: 'wait', duration: 1500, description } };
+      return {
+        ok: true,
+        action: { type: 'wait', duration: 1500, description },
+        goalId: step.goalId,
+        stepId: step.id,
+      };
 
     case 'screenshot':
-      return { ok: true, action: { type: 'screenshot', description: 'Take screenshot' } };
+      return {
+        ok: true,
+        action: { type: 'screenshot', description: 'Take screenshot' },
+        goalId: step.goalId,
+        stepId: step.id,
+      };
 
     default:
       return {

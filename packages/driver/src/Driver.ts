@@ -4,15 +4,18 @@ import type {
   SessionConfig,
   UITree,
   DriverCapabilities,
+  ActiveApp,
 } from '@athena-os/core';
 
-export type { UITree, DriverCapabilities } from '@athena-os/core';
+export type { UITree, DriverCapabilities, ActiveApp } from '@athena-os/core';
 
 export interface Driver {
   createSession(config: SessionConfig): Promise<DriverCapabilities>;
   closeSession(): Promise<void>;
   launchApp(bundleId: string): Promise<void>;
   terminateApp(bundleId: string): Promise<void>;
+  /** The application currently foreground on the device, if determinable. */
+  getActiveApp(): Promise<ActiveApp | undefined>;
   tap(selector: Selector): Promise<void>;
   type(text: string, selector?: Selector): Promise<void>;
   swipe(

@@ -2,6 +2,7 @@ import type {
   CapabilityRegistry,
   ExecutionGraph,
   ExecutionPlan,
+  Goal,
   Intent,
   SimulationEnvironment,
 } from '@athena-os/core';
@@ -22,6 +23,7 @@ export type ReasoningResult =
       plan: ExecutionPlan;
       simulation: PlanSimulationResult;
       executionGraph: ExecutionGraph;
+      goals?: Goal[];
     }
   | { kind: 'clarificationRequired'; reason: string }
   | { kind: 'rejected'; reasons: string[] };
@@ -68,7 +70,16 @@ export class ReasoningEngine {
     const simulation = simulator.simulate(candidate.plan, environment, this.registry);
     const executionGraph = executionGraphBuilder.buildExecutionGraph(candidate.plan);
 
-    return { kind: 'executionPlan', plan: candidate.plan, simulation, executionGraph };
+    return {
+      kind: 'executionPlan',
+      plan: candidate.plan,
+      simulation,
+      executionGraph,
+      // Carry the backend-extracted goals forward so the caller can persist them
+      // on the intent for downstream execution (action mapping needs the concrete
+      // targets). Optional: deterministic/other backends may omit it.
+      ...(candidate.goals ? { goals: candidate.goals } : {}),
+    };
   }
 }
 

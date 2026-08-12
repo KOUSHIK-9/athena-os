@@ -1,7 +1,7 @@
 import type { SemanticElement, SemanticModel, SemanticRole, Selector } from '@athena-os/core';
 
 /** How closely an element's label matched the requested label. */
-export type LabelMatchQuality = 'exact' | 'caseInsensitive' | 'contains' | 'none';
+export type LabelMatchQuality = 'exact' | 'caseInsensitive' | 'contains' | 'fuzzy' | 'none';
 
 export interface ElementMatch {
   /** The matched semantic element. */
@@ -40,11 +40,39 @@ function* walkElement(element: SemanticElement): Generator<SemanticElement> {
   }
 }
 
+function normalizeTokens(value: string): string[] {
+  return value
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length >= 2);
+}
+
+/**
+ * Fraction of significant tokens shared between two strings (Jaccard-like over
+ * token sets). Used as a fuzzy fallback when neither string is a substring of
+ * the other, e.g. "Fitness result" vs "Fitness app".
+ */
+function tokenOverlap(a: string, b: string): number {
+  const ta = new Set(normalizeTokens(a));
+  const tb = new Set(normalizeTokens(b));
+  if (ta.size === 0 || tb.size === 0) return 0;
+  let shared = 0;
+  for (const token of ta) {
+    if (tb.has(token)) shared += 1;
+  }
+  return shared / Math.max(ta.size, tb.size);
+}
+
 function matchQuality(label: string, requested: string): LabelMatchQuality {
   if (!label) return 'none';
   if (label === requested) return 'exact';
-  if (label.toLowerCase() === requested.toLowerCase()) return 'caseInsensitive';
-  if (label.toLowerCase().includes(requested.toLowerCase())) return 'contains';
+  const ll = label.toLowerCase();
+  const rl = requested.toLowerCase();
+  if (ll === rl) return 'caseInsensitive';
+  // Bidirectional substring: a goal phrase ("Fitness result") may be longer
+  // than the on-screen label ("Fitness"), or vice versa.
+  if (ll.includes(rl) || rl.includes(ll)) return 'contains';
+  if (tokenOverlap(label, requested) >= 0.5) return 'fuzzy';
   return 'none';
 }
 
@@ -56,6 +84,8 @@ function labelConfidence(quality: LabelMatchQuality): number {
       return 0.95;
     case 'contains':
       return 0.8;
+    case 'fuzzy':
+      return 0.65;
     case 'none':
       return 0;
   }

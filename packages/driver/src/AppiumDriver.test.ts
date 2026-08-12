@@ -138,3 +138,43 @@ describe('AppiumDriver.type fallback for search', () => {
     expect(client.elementSendKeys).toHaveBeenCalledWith('field-ref', 'Fitness');
   });
 });
+
+describe('AppiumDriver.getActiveApp', () => {
+  it('returns the foreground bundle id when the driver reports it', async () => {
+    const client = fakeClient({
+      execute: vi.fn(async () => ({
+        bundleId: 'com.apple.Preferences',
+        name: 'Settings',
+      })),
+    });
+    const driver = new AppiumDriver({ host: '127.0.0.1', port: 4723 });
+    withFakeSession(driver, client);
+
+    await expect(driver.getActiveApp()).resolves.toEqual({
+      bundleId: 'com.apple.Preferences',
+      name: 'Settings',
+    });
+  });
+
+  it('returns undefined when the driver reports no foreground app', async () => {
+    const client = fakeClient({
+      execute: vi.fn(async () => ({})),
+    });
+    const driver = new AppiumDriver({ host: '127.0.0.1', port: 4723 });
+    withFakeSession(driver, client);
+
+    await expect(driver.getActiveApp()).resolves.toBeUndefined();
+  });
+
+  it('returns undefined when the driver command throws', async () => {
+    const client = fakeClient({
+      execute: vi.fn(async () => {
+        throw new Error('unsupported');
+      }),
+    });
+    const driver = new AppiumDriver({ host: '127.0.0.1', port: 4723 });
+    withFakeSession(driver, client);
+
+    await expect(driver.getActiveApp()).resolves.toBeUndefined();
+  });
+});

@@ -29,10 +29,15 @@ export function runScenario(
   scenario: ConformanceScenario
 ): ScenarioResult {
   const actual = backend.reason(scenario.intent, scenario.registry);
+  // The backend result may carry auxiliary fields (e.g. `goals` threaded
+  // forward for downstream execution) that are not part of the conformance
+  // oracle. Compare on the canonical result shape only.
+  const actualComparable = { ...actual } as Record<string, unknown>;
+  delete actualComparable.goals;
   return {
     scenarioId: scenario.id,
     layer: scenario.layer,
-    passed: isDeepStrictEqual(actual, scenario.expected),
+    passed: isDeepStrictEqual(actualComparable, scenario.expected),
     actual,
     expected: scenario.expected,
   };
@@ -68,13 +73,18 @@ export function runParity(
   scenarios: readonly ConformanceScenario[]
 ): ConformanceReport {
   const parityScenarios = scenarios.filter((scenario) => scenario.layer === 'parity');
+  const stripAux = (r: ReasoningBackendResult): Record<string, unknown> => {
+    const out = { ...r } as Record<string, unknown>;
+    delete out.goals;
+    return out;
+  };
   const results = parityScenarios.map((scenario) => {
     const actualA = backendA.reason(scenario.intent, scenario.registry);
     const actualB = backendB.reason(scenario.intent, scenario.registry);
     return {
       scenarioId: scenario.id,
       layer: scenario.layer as 'parity',
-      passed: isDeepStrictEqual(actualA, actualB),
+      passed: isDeepStrictEqual(stripAux(actualA), stripAux(actualB)),
       actual: actualA,
       expected: actualB,
     };

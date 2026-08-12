@@ -36,10 +36,14 @@ describe('Launch Capability', () => {
     expect(driver.calls).not.toContain('launchApp');
   });
 
-  it('verifies session-active when verifyAppLaunch is enabled', async () => {
+  it('verifies the launched app is foreground when verifyAppLaunch is enabled', async () => {
+    const driver = fakeDriver({
+      getActiveApp: async () => ({ bundleId: 'com.apple.settings' }),
+    });
     const { verification } = await runCapability(
       launchCapability,
       fakeContext({
+        driver,
         action: {
           type: 'launchApp',
           bundleId: 'com.apple.settings',
@@ -51,8 +55,31 @@ describe('Launch Capability', () => {
         },
       })
     );
-    expect(verification.strategy).toBe('session-active');
+    expect(verification.strategy).toBe('app-foreground');
     expect(verification.verified).toBe(true);
+  });
+
+  it('fails verification when a different app is foreground', async () => {
+    const driver = fakeDriver({
+      getActiveApp: async () => ({ bundleId: 'com.apple.maps' }),
+    });
+    const { verification } = await runCapability(
+      launchCapability,
+      fakeContext({
+        driver,
+        action: {
+          type: 'launchApp',
+          bundleId: 'com.apple.settings',
+          description: 'Launch Settings',
+        },
+        config: {
+          ...fakeContext().config,
+          verifyAppLaunch: true,
+        },
+      })
+    );
+    expect(verification.strategy).toBe('app-foreground');
+    expect(verification.verified).toBe(false);
   });
 });
 

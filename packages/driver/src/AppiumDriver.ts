@@ -1,5 +1,5 @@
 import type { SessionConfig, DeviceInfo, Selector } from '@athena-os/core';
-import type { Driver, UITree, DriverCapabilities } from './Driver.js';
+import type { Driver, UITree, DriverCapabilities, ActiveApp } from './Driver.js';
 import { resolveSelector, createFallbackSelectors } from './selectors.js';
 import { parseAccessibleXML } from './xml.js';
 import { AppiumDriverError, AppiumSessionError, AppiumElementNotFoundError } from './errors.js';
@@ -164,6 +164,29 @@ export class AppiumDriver implements Driver {
         'terminateApp',
         error instanceof Error ? error : undefined
       );
+    }
+  }
+
+  async getActiveApp(): Promise<ActiveApp | undefined> {
+    this.ensureSession();
+    logger.debug('Getting active app');
+
+    try {
+      const active = await this.client.execute('mobile: getActiveApp', {});
+      if (!active || typeof active !== 'object') {
+        return undefined;
+      }
+      const app = active as Record<string, unknown>;
+      if (typeof app.bundleId !== 'string' || app.bundleId.length === 0) {
+        return undefined;
+      }
+      return {
+        bundleId: app.bundleId,
+        ...(typeof app.name === 'string' && app.name.length > 0 ? { name: app.name } : {}),
+      };
+    } catch (error) {
+      logger.trace({ error }, 'getActiveApp unavailable');
+      return undefined;
     }
   }
 

@@ -10,6 +10,14 @@ export { StubModelClient } from './llm/stubModelClient.js';
 export { OpenAIModelClient } from './openai/openAiModelClient.js';
 export { OpenAICompatibleHttpProvider } from './openai/openAiHttpProvider.js';
 export { OpenAIError } from './openai/openAiHttpProvider.js';
+export { AppleModelClient, AppleModelUnavailableError } from './apple/appleModelClient.js';
+export {
+  AppleModelConfigSchema,
+  appleModelConfigFromEnv,
+  parseAppleModelConfig,
+} from './apple/appleModelConfig.js';
+export { AppleBridgeError } from './apple/appleModelBridge.js';
+export { SYSTEM_PROMPT } from './llm/goalPrompt.js';
 export type {
   ChatCompletionProvider,
   ChatCompletionRequest,
