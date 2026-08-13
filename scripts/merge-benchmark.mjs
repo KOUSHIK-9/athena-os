@@ -92,11 +92,13 @@ quality advantage over the on-device Apple backend for these scenarios.
 - **\`toggle-dark-mode\`** executed under Apple but the deterministic backend
   failed to resolve the "dark mode" control. This is a genuine deterministic
   weakness (keyword mapping only), not environmental.
-- **\`weekend-trip\`** failed under Apple with
-  \`model returned invalid JSON\`. The on-device FM occasionally emits
-  malformed JSON on open-ended prompts. **Recommended hardening (in-scope):**
-  add a JSON-repair/retry step in the Apple bridge so a transient malformed
-  response degrades to a clarification request instead of a hard error.
+- **\`weekend-trip\`** failed under Apple with \`model returned invalid JSON\`
+  (the on-device FM occasionally emits malformed JSON on open-ended prompts).
+  This is now handled: \`AppleModelClient.extractGoals\` retries up to
+  \`maxParseRetries\` (default 1) with a repair instruction, and on exhaustion
+  degrades to a \`clarificationRequired\` result instead of throwing — so the
+  runner re-plans or asks the user rather than crashing (see commit
+  \`feat(apple): retry/repair malformed on-device JSON\`).
 
 ### Methodology
 

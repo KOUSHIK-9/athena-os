@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-13T05:59:56.581Z",
+  "generatedAt": "2026-08-13T06:13:11.939Z",
   "mode": "execution (simulator)",
   "backends": [
     "apple"
@@ -23,9 +23,9 @@
       "extractionSuccessRate": 0.8571428571428571,
       "planValidityRate": 0.8571428571428571,
       "executionSuccessRate": 0.7142857142857143,
-      "clarificationRate": 0,
-      "avgLatencyMs": 63436,
-      "avgStepLatencyMs": 63436,
+      "clarificationRate": 0.14285714285714285,
+      "avgLatencyMs": 74598,
+      "avgStepLatencyMs": 74598,
       "raw": [
         {
           "scenarioId": "open-settings",
@@ -136,12 +136,12 @@
           "scenarioId": "weekend-trip",
           "prompt": "plan a weekend trip to Kyoto",
           "ok": false,
-          "kind": "error",
+          "kind": "clarificationRequired",
           "extractionSuccess": false,
           "planValid": false,
           "executionSuccess": false,
-          "clarification": "model returned invalid JSON: SyntaxError: Expected ',' or ']' after array element in JSON at position 7191 (line 96 column 77)",
-          "latencyMs": 56663,
+          "clarification": "Apple on-device model returned invalid JSON after 2 attempts (model returned invalid JSON: SyntaxError: Expected ',' or ']' after array element in JSON at position 7798 (line 1 column 7799))",
+          "latencyMs": 134797,
           "goals": [],
           "steps": 0,
           "executedSteps": 0,

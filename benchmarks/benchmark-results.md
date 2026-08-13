@@ -1,6 +1,6 @@
 # Athena Reasoning-Backend Benchmark
 
-Generated: 2026-08-13T06:00:54.158Z
+Generated: 2026-08-13T06:13:24.779Z
 Mode: execution (simulator)
 Scenarios: open-settings, reply-message, photo-cleanup, launch-camera, toggle-dark-mode, flight-search, weekend-trip
 
@@ -9,7 +9,7 @@ Scenarios: open-settings, reply-message, photo-cleanup, launch-camera, toggle-da
 | Backend | Model | Network | Cost | Extraction | Plan valid | Exec success | Clarify rate | Avg latency |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | deterministic | deterministic-keyword | no | $0 (local heuristic) | 43% | 43% | 14% | 57% | 14137ms |
-| apple | apple:system-language-model | no | $0 (on-device FoundationModels) | 86% | 86% | 71% | 0% | 63436ms |
+| apple | apple:system-language-model | no | $0 (on-device FoundationModels) | 86% | 86% | 71% | 14% | 74598ms |
 
 ## Scenario detail
 
@@ -35,7 +35,7 @@ Scenarios: open-settings, reply-message, photo-cleanup, launch-camera, toggle-da
 | launch-camera | executionFailed | ✓ | ✓ | ✗ | 0/2 | 81720ms |
 | toggle-dark-mode | executed | ✓ | ✓ | ✓ | 1/1 | 34962ms |
 | flight-search | executed | ✓ | ✓ | ✓ | 7/7 | 81922ms |
-| weekend-trip | error | ✗ | ✗ | ✗ | 0/0 | 56663ms |
+| weekend-trip | clarificationRequired | ✗ | ✗ | ✗ | 0/0 | 134797ms |
 
 ## Recommendation
 
@@ -69,11 +69,13 @@ quality advantage over the on-device Apple backend for these scenarios.
 - **`toggle-dark-mode`** executed under Apple but the deterministic backend
   failed to resolve the "dark mode" control. This is a genuine deterministic
   weakness (keyword mapping only), not environmental.
-- **`weekend-trip`** failed under Apple with
-  `model returned invalid JSON`. The on-device FM occasionally emits
-  malformed JSON on open-ended prompts. **Recommended hardening (in-scope):**
-  add a JSON-repair/retry step in the Apple bridge so a transient malformed
-  response degrades to a clarification request instead of a hard error.
+- **`weekend-trip`** failed under Apple with `model returned invalid JSON`
+  (the on-device FM occasionally emits malformed JSON on open-ended prompts).
+  This is now handled: `AppleModelClient.extractGoals` retries up to
+  `maxParseRetries` (default 1) with a repair instruction, and on exhaustion
+  degrades to a `clarificationRequired` result instead of throwing — so the
+  runner re-plans or asks the user rather than crashing (see commit
+  `feat(apple): retry/repair malformed on-device JSON`).
 
 ### Methodology
 
