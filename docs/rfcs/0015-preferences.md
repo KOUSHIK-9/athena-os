@@ -61,7 +61,9 @@ the same subject are the same dimension and are reconciled by supersession (§3)
 Preferences follow RFC-0013 §5's general supersession rule unchanged:
 
 - Two entries conflict when they share a `subject`.
-- The later `recordedAt` wins; ties broken by `id` ascending.
+- The later `recordedAt` wins; ties on `recordedAt` are broken by `id`, where
+  the lexicographically greater `id` is treated as newer (consistent with
+  RFC-0013 §5).
 - The superseded entry is retained (append-only) but excluded from reads.
 
 Example: `user.preferredSeat = window` superseded by

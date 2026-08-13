@@ -156,9 +156,11 @@ own the preferences those executions reveal.
   ```
 
 - **Supersession rule:** two entries conflict when they share a `subject`;
-  the later `recordedAt` wins, ties are broken by `id`. Appending a newer
-  entry on a subject deterministically supersedes the older one — the old
-  entry is retained (append-only) but excluded from reads.
+  the later `recordedAt` wins. Ties on `recordedAt` are broken by `id`, where
+  the lexicographically **greater** `id` is treated as newer. Appending a newer
+  entry on a subject (or a state-transition suffix such as `-fired`) therefore
+  deterministically supersedes the older one — the old entry is retained
+  (append-only) but excluded from reads.
 - A preference's "dimension" (§3) is its `subject`; preference supersession
   is the same rule.
 
