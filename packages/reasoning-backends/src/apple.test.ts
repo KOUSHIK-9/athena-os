@@ -190,4 +190,55 @@ describe('AppleModelClient (on-device FoundationModels)', () => {
       cleanup();
     }
   });
+
+  it('retries with a repair instruction when the model returns invalid JSON', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'athena-apple-'));
+    const bin = join(dir, 'stub-bridge');
+    writeFileSync(
+      bin,
+      `#!/bin/bash
+COUNT="$(dirname "$0")/.count"
+n=$(cat "$COUNT" 2>/dev/null || echo 0)
+n=$((n + 1))
+echo "$n" > "$COUNT"
+if [ "$n" -eq 1 ]; then
+  echo '{"ok":true,"text":"this is not valid json {{{"}'
+else
+  echo '{"ok":true,"text":"${GOALS_JSON.replace(/"/g, '\\"')}"}'
+fi
+`,
+      { mode: 0o755 }
+    );
+    chmodSync(bin, 0o755);
+    const config: AppleModelConfig = {
+      bridgePath: bin,
+      buildOnDemand: false,
+      timeoutMs: 10000,
+      maxTokens: 64,
+      maxParseRetries: 1,
+    };
+    try {
+      const client = new AppleModelClient(config);
+      const extraction = client.extractGoals(INTENT);
+      expect(extraction.goals).toEqual([
+        { kind: 'openApp', description: 'Open Settings' },
+        { kind: 'type', description: 'search for Fitness' },
+      ]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('degrades to a clarification (no hard error) when retries are exhausted', () => {
+    const { config, cleanup } = stubBridge('echo \'{"ok":true,"text":"still not valid json"}\'');
+    try {
+      const client = new AppleModelClient({ ...config, maxParseRetries: 1 });
+      const extraction = client.extractGoals(INTENT);
+      expect(extraction.goals).toEqual([]);
+      expect(typeof extraction.clarification).toBe('string');
+      expect(extraction.clarification).toMatch(/invalid JSON/i);
+    } finally {
+      cleanup();
+    }
+  });
 });
