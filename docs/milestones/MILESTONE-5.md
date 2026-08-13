@@ -56,7 +56,10 @@ was touched.
    (guarded at the call site and in `recordExperience`).
 6. **Live Apple scenario** (`memory.appleScenarios.test.ts`): full-loop scenario
    on the iPhone 17 Simulator, gated behind `ATHENA_REAL_DEVICE=1 &&
-   ATHENA_APPLE_MODEL=1` (skips cleanly in CI).
+   ATHENA_APPLE_MODEL=1` (skips cleanly in CI). **Runtime-verified**: executed
+   live against a booted iPhone 17 (`EBB6FAF3-65D9-495D-9882-11392B9A9643`) —
+   preference written → retrieved into the Apple model context → on-device plan →
+   Appium-driven execution (`verified: true`) → `experience` written back.
 
 ## Gates (all green)
 
@@ -66,6 +69,10 @@ was touched.
 - Unit + integration suites: reasoning 70, memory 10, backends 56, run-layer 83
   (incl. trigger lifecycle, memory-loop, Apple-context, and gated live scenario).
 - `eslint` clean on affected packages.
+- **Live Apple-memory scenario executed on a booted iPhone 17 Simulator and
+  passed**: the full write → retrieve → Apple on-device reasoning → simulator
+  execution → verification → experience write-back loop is runtime-verified
+  (not merely structural/hermetic).
 
 ## Explicitly out of scope (future milestones)
 

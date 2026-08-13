@@ -28,11 +28,11 @@ describe('Live Apple memory loop (iPhone 17 Simulator)', () => {
   it.skipIf(!ENABLED)('remembers a preference and reasons with it on-device', async () => {
     const store = new InMemoryStore();
     const pref: MemoryEntry = {
-      id: 'pref-fitness',
+      id: 'pref-settings',
       kind: 'preference',
-      subject: 'user.preference.fitness',
+      subject: 'user.preference.settings',
       recordedAt: new Date().toISOString(),
-      payload: { value: 'open Fitness app first' },
+      payload: { value: 'prefer the Battery section first' },
     };
     store.record(pref);
 
@@ -45,12 +45,12 @@ describe('Live Apple memory loop (iPhone 17 Simulator)', () => {
     };
 
     const outcome = await runOnDevice(
-      { prompt: 'Open my Fitness settings', backend: 'apple', memory: store },
+      { prompt: 'Open Settings', backend: 'apple', memory: store },
       capturingReason
     );
 
     // Memory was retrieved and handed to the Apple backend for this intent.
-    expect(captured?.result.retrievedMemory?.map((e) => e.id)).toContain('pref-fitness');
+    expect(captured?.result.retrievedMemory?.map((e) => e.id)).toContain('pref-settings');
 
     // The on-device run executed and verified on the simulator.
     expect(outcome.success).toBe(true);
