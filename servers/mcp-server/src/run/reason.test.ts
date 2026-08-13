@@ -10,7 +10,7 @@ import {
   type ReasoningBackend,
 } from '@athena-os/reasoning';
 import { LlmReasoningBackend, type ModelClient } from '@athena-os/reasoning-backends';
-import { AppleModelUnavailableError } from '@athena-os/reasoning-backends';
+import { AppleModelClient, AppleModelUnavailableError } from '@athena-os/reasoning-backends';
 import { iphoneRunRegistry } from './registry.js';
 import {
   makeIntent,
@@ -114,10 +114,27 @@ describe('reasonForRun (deterministic)', () => {
     expect(result.kind).toBe('clarificationRequired');
   });
 
-  it('auto-selects the deterministic backend when no API key is set', () => {
+  it('auto selects the on-device Apple backend when no API key is set', () => {
     delete process.env.ATHENA_OPENAI_API_KEY;
     const { id } = resolveBackend();
-    expect(id).toBe('deterministic');
+    expect(id.startsWith('apple:')).toBe(true);
+  });
+
+  it('auto falls back to deterministic when Apple Intelligence is unavailable', () => {
+    delete process.env.ATHENA_OPENAI_API_KEY;
+    const original = AppleModelClient.prototype.extractGoals;
+    AppleModelClient.prototype.extractGoals = () => {
+      throw new AppleModelUnavailableError('disabled', 'test');
+    };
+    try {
+      // A prompt the deterministic extractor cannot satisfy, so the Apple model is
+      // actually consulted (and forced unavailable here) and the runner must fall back.
+      const { backendId, result } = reasonForRun('plan a weekend trip to Kyoto', { backend: 'auto' });
+      expect(backendId).toBe('deterministic');
+      expect(result.kind).toBe('clarificationRequired');
+    } finally {
+      AppleModelClient.prototype.extractGoals = original;
+    }
   });
 });
 

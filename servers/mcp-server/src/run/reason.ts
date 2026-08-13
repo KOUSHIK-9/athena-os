@@ -11,6 +11,7 @@ import {
 } from '@athena-os/reasoning';
 import {
   AppleModelClient,
+  AppleModelUnavailableError,
   appleModelConfigFromEnv,
   LlmReasoningBackend,
   OpenAIModelClient,
@@ -175,11 +176,20 @@ export function resolveBackend(preference: BackendPreference = 'auto'): {
     return { backend: new LlmReasoningBackend(modelClient), id: `llm:${modelClient.id}` };
   }
 
+  // `auto` prefers the on-device Apple backend (local, free, highest quality
+  // per the reasoning-backend benchmark); `reasonForRun` falls back to
+  // deterministic automatically when Apple Intelligence is unavailable.
+  if (preference === 'auto') {
+    const modelClient = new AppleModelClient(appleModelConfigFromEnv());
+    return { backend: new LlmReasoningBackend(modelClient), id: `apple:${modelClient.id}` };
+  }
+
   return { backend: new DeterministicReasoningBackend(), id: 'deterministic' };
 }
 
 export function reasonForRun(prompt: string, options: ReasonOptions = {}): RunReasoning {
-  const { backend, id } = resolveBackend(options.backend ?? 'auto');
+  const preference = options.backend ?? 'auto';
+  const { backend, id } = resolveBackend(preference);
 
   // The explicit Apple backend must call AppleModelClient.extractGoals(), which
   // drives the on-device FoundationModels bridge, to produce its goals. Pre-filling
@@ -189,7 +199,7 @@ export function reasonForRun(prompt: string, options: ReasonOptions = {}): RunRe
   // backend=apple we hand the model an intent with empty goals and let it extract.
   // Every other backend keeps the deterministic pre-fill (the historical default).
   const intent =
-    options.backend === 'apple'
+    preference === 'apple'
       ? makeIntent(prompt)
       : enrichIntentWithExtractedGoals(makeIntent(prompt));
 
@@ -206,22 +216,49 @@ export function reasonForRun(prompt: string, options: ReasonOptions = {}): RunRe
     executionGraphBuilder: new DeterministicExecutionGraphBuilder(),
   });
 
-  const result = engine.reason(intent, options.environment);
+  let result;
+  try {
+    result = engine.reason(intent, options.environment);
+  } catch (error) {
+    // For `auto`, if the on-device Apple model is unavailable (Apple Intelligence
+    // disabled / ineligible / assets not ready) fall back to the deterministic
+    // backend rather than failing. An explicit `apple` choice still surfaces the
+    // error so the caller sees the real cause.
+    if (preference === 'auto' && error instanceof AppleModelUnavailableError) {
+      const det = resolveBackend('deterministic');
+      const detIntent = enrichIntentWithExtractedGoals(makeIntent(prompt));
+      if (options.observation) {
+        detIntent.text = promptWithObservation(prompt, options.observation);
+      }
+      const detEngine = new ReasoningEngine(iphoneRunRegistry, {
+        backend: det.backend,
+        planValidator: new DeterministicPlanValidator(),
+        simulator: new DeterministicSimulator(),
+        executionGraphBuilder: new DeterministicExecutionGraphBuilder(),
+      });
+      return finalizeReason(detIntent, det.id, detEngine.reason(detIntent, options.environment), prompt);
+    }
+    throw error;
+  }
 
-  // Persist the model-extracted goals onto the intent we own so downstream
-  // execution (`planToAction`) can resolve concrete targets (app name, element
-  // label, typed text) by `goalId`. The deterministic backend pre-fills
-  // `intent.goals` itself, so this is a no-op there; the model backends return
-  // `result.goals`, which we write back here rather than mutating the backend's
-  // input intent (which callers may reuse across backends, e.g. conformance).
+  return finalizeReason(intent, id, result, prompt);
+}
+
+/**
+ * Persist model-extracted goals onto the owned intent and assemble the result.
+ * Model backends return `result.goals`; the deterministic backend pre-fills
+ * `intent.goals` itself, so that path is a no-op. We write goals back here
+ * rather than mutating the backend's input intent (callers may reuse it across
+ * backends, e.g. conformance).
+ */
+function finalizeReason(
+  intent: Intent,
+  backendId: string,
+  result: ReasoningResult,
+  prompt: string
+): RunReasoning {
   if (result.kind === 'executionPlan' && result.goals) {
     intent.goals = result.goals;
   }
-
-  return {
-    intent,
-    backendId: id,
-    result,
-    originalPrompt: prompt,
-  };
+  return { intent, backendId, result, originalPrompt: prompt };
 }
