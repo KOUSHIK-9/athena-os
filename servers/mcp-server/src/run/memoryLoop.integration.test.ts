@@ -29,7 +29,12 @@ function makeTrigger(
     kind: 'trigger',
     subject,
     recordedAt: '2026-01-01T00:00:00.000Z',
-    payload: { condition, action: { text: actionText }, recurrence, state: 'pending' } satisfies TriggerPayload,
+    payload: {
+      condition,
+      action: { text: actionText },
+      recurrence,
+      state: 'pending',
+    } satisfies TriggerPayload,
   };
 }
 
@@ -49,7 +54,9 @@ describe('Memory product loop: trigger firing + experience write-back (RFC-0016/
 
     // The due trigger was fired by the run lifecycle and, because its
     // synthesized intent produced a valid plan, advanced to satisfied.
-    const trigger = store.entries().filter((e) => e.kind === 'trigger' && e.subject === 'schedule.standup');
+    const trigger = store
+      .entries()
+      .filter((e) => e.kind === 'trigger' && e.subject === 'schedule.standup');
     expect(trigger).toHaveLength(1);
     expect(triggerState(trigger[0])).toBe('satisfied');
 
@@ -60,7 +67,10 @@ describe('Memory product loop: trigger firing + experience write-back (RFC-0016/
   });
 
   it('does not fire triggers or write experiences when no memory store is supplied', async () => {
-    const outcome = await runOnDevice({ prompt: 'Open Settings', backend: 'deterministic' }, reasonForRun);
+    const outcome = await runOnDevice(
+      { prompt: 'Open Settings', backend: 'deterministic' },
+      reasonForRun
+    );
     expect(outcome.success).toBe(true);
   });
 });

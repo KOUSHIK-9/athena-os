@@ -96,9 +96,7 @@ export function runComparison(
         error = e instanceof Error ? e.message : String(e);
       }
       const latencyMs = Date.now() - start;
-      const kind = error
-        ? ('error' as const)
-        : (result!.kind as ReasoningBackendResult['kind']);
+      const kind = error ? ('error' as const) : (result!.kind as ReasoningBackendResult['kind']);
       let validPlan: boolean | null = null;
       if (!error && result!.kind === 'executionPlan') {
         validPlan = validator.validatePlan(result!.plan, scenario.registry).valid;
@@ -117,9 +115,7 @@ export function runComparison(
     const avgLatencyMs =
       measurements.length === 0
         ? 0
-        : Math.round(
-            measurements.reduce((sum, m) => sum + m.latencyMs, 0) / measurements.length
-          );
+        : Math.round(measurements.reduce((sum, m) => sum + m.latencyMs, 0) / measurements.length);
 
     return {
       backendId: b.id,
@@ -154,9 +150,7 @@ export interface ComparisonBackendOptions {
  *    is not invoked on every test run.
  *  - openai/zen: only when an API key is supplied (network required).
  */
-export function buildComparisonBackends(
-  opts: ComparisonBackendOptions = {}
-): BackendUnderTest[] {
+export function buildComparisonBackends(opts: ComparisonBackendOptions = {}): BackendUnderTest[] {
   const backends: BackendUnderTest[] = [
     {
       id: 'deterministic',

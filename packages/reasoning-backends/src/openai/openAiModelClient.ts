@@ -1,6 +1,10 @@
 import type { Intent } from '@athena-os/core';
 import type { ModelClient, ModelExtraction } from '../llm/modelClient.js';
-import { filterGoalsToContext, goalExtractionInstructions, parseGoalsJson as sharedParseGoalsJson } from '../llm/goalPrompt.js';
+import {
+  filterGoalsToContext,
+  goalExtractionInstructions,
+  parseGoalsJson as sharedParseGoalsJson,
+} from '../llm/goalPrompt.js';
 import type { ChatCompletionProvider, ChatMessage } from './chatCompletionProvider.js';
 import { OpenAICompatibleHttpProvider } from './openAiHttpProvider.js';
 import { OpenAIError } from './openAiHttpProvider.js';

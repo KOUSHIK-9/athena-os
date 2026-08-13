@@ -19,7 +19,8 @@ import type { SemanticElement, SemanticModel, Selector } from '@athena-os/core';
  */
 
 vi.mock('../sessionManager.js', () => {
-  let executeMock: ((action: { type: string; text?: string; selector?: Selector }) => Promise<unknown>) | null =
+  let executeMock:
+    ((action: { type: string; text?: string; selector?: Selector }) => Promise<unknown>) | null =
     null;
   return {
     mcpSessionManager: {
@@ -73,7 +74,10 @@ function makeModel(): SemanticModel {
     children: [
       // The search control keeps its own label "Search" even after the user
       // types "Bluetooth" into it (the query lives in `value`).
-      el('search', 'search_field', 'Search', { value: 'Bluetooth', rect: { x: 0, y: 0, width: 100, height: 40 } }),
+      el('search', 'search_field', 'Search', {
+        value: 'Bluetooth',
+        rect: { x: 0, y: 0, width: 100, height: 40 },
+      }),
       el('bt', 'cell', 'Bluetooth', { rect: { x: 0, y: 50, width: 100, height: 40 } }),
       el('done', 'cell', 'Done', { rect: { x: 0, y: 100, width: 100, height: 40 } }),
       el('fail', 'cell', 'FAIL', { rect: { x: 0, y: 150, width: 100, height: 40 } }),
@@ -127,7 +131,10 @@ function buildPlan(specs: StepSpec[]) {
   return { intent: { text: 'goal', goals }, plan: { id: 'plan', intentId: 'intent', steps } };
 }
 
-function makeReasonForRun(planA: ReturnType<typeof buildPlan>, planB: ReturnType<typeof buildPlan>) {
+function makeReasonForRun(
+  planA: ReturnType<typeof buildPlan>,
+  planB: ReturnType<typeof buildPlan>
+) {
   const backendsUsed: string[] = [];
   const planStepCounts: number[] = [];
   const fn = ((p: string, opts: { backend?: string; observation?: unknown }) => {

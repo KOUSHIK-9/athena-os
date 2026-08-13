@@ -240,7 +240,12 @@ export function reasonForRun(prompt: string, options: ReasonOptions = {}): RunRe
         executionGraphBuilder: new DeterministicExecutionGraphBuilder(),
         ...(options.memory ? { memory: options.memory } : {}),
       });
-      return finalizeReason(detIntent, det.id, detEngine.reason(detIntent, options.environment), prompt);
+      return finalizeReason(
+        detIntent,
+        det.id,
+        detEngine.reason(detIntent, options.environment),
+        prompt
+      );
     }
     throw error;
   }

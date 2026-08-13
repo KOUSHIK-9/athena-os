@@ -5,7 +5,12 @@ export { parityScenarios } from './conformance/fixtures/parity.js';
 export { behavioralScenarios } from './conformance/fixtures/behavioral.js';
 export { DeterministicReasoningBackend } from './deterministic/index.js';
 export { LlmReasoningBackend } from './llm/LlmReasoningBackend.js';
-export type { ModelClient, ExtractedGoal, ModelExtraction, ModelExtractionContext } from './llm/modelClient.js';
+export type {
+  ModelClient,
+  ExtractedGoal,
+  ModelExtraction,
+  ModelExtractionContext,
+} from './llm/modelClient.js';
 export { StubModelClient } from './llm/stubModelClient.js';
 export { OpenAIModelClient } from './openai/openAiModelClient.js';
 export { OpenAICompatibleHttpProvider } from './openai/openAiHttpProvider.js';
@@ -17,7 +22,12 @@ export {
   parseAppleModelConfig,
 } from './apple/appleModelConfig.js';
 export { AppleBridgeError } from './apple/appleModelBridge.js';
-export { SYSTEM_PROMPT, goalExtractionInstructions, filterGoalsToContext, PROHIBITED_GOAL_KINDS } from './llm/goalPrompt.js';
+export {
+  SYSTEM_PROMPT,
+  goalExtractionInstructions,
+  filterGoalsToContext,
+  PROHIBITED_GOAL_KINDS,
+} from './llm/goalPrompt.js';
 export type {
   ChatCompletionProvider,
   ChatCompletionRequest,

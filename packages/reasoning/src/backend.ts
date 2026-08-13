@@ -38,7 +38,12 @@ import type {
  * changing the rest of the engine (RFC-0012 §Contract).
  */
 export type ReasoningBackendResult =
-  | { kind: 'executionPlan'; plan: ExecutionPlan; goals?: Goal[]; retrievedMemory?: readonly MemoryEntry[] }
+  | {
+      kind: 'executionPlan';
+      plan: ExecutionPlan;
+      goals?: Goal[];
+      retrievedMemory?: readonly MemoryEntry[];
+    }
   | { kind: 'clarificationRequired'; reason: string; retrievedMemory?: readonly MemoryEntry[] }
   | { kind: 'rejected'; reasons: string[]; retrievedMemory?: readonly MemoryEntry[] };
 

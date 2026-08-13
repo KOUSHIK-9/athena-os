@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import type { CapabilityDescriptor, CapabilityRegistry, MemoryEntry } from '@athena-os/core';
 import { InMemoryStore } from '@athena-os/memory';
 import { LlmReasoningBackend } from './LlmReasoningBackend.js';
-import type { Intent, ModelClient, ModelExtraction, ModelExtractionContext } from './modelClient.js';
+import type {
+  Intent,
+  ModelClient,
+  ModelExtraction,
+  ModelExtractionContext,
+} from './modelClient.js';
 
 /** A model client that records the context it was called with. */
 class CapturingModelClient implements ModelClient {

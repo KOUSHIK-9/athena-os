@@ -44,7 +44,9 @@ function triggerAt(store: InMemoryStore, subject: string): MemoryEntry {
 
 describe('RFC-0016 trigger lifecycle', () => {
   it('does not fire a pending time trigger before its at timestamp', () => {
-    expect(isConditionMet({ kind: 'time', at: '2026-06-01T00:00:00.000Z' }, '2026-01-01T00:00:00.000Z')).toBe(false);
+    expect(
+      isConditionMet({ kind: 'time', at: '2026-06-01T00:00:00.000Z' }, '2026-01-01T00:00:00.000Z')
+    ).toBe(false);
     expect(isConditionMet({ kind: 'always' }, '2026-01-01T00:00:00.000Z')).toBe(true);
   });
 

@@ -125,7 +125,10 @@ export class LlmReasoningBackend implements ReasoningBackend {
     return context;
   }
 
-  private goalsFor(intent: Intent, context?: ModelExtractionContext): { goals: Goal[]; clarification?: string } {
+  private goalsFor(
+    intent: Intent,
+    context?: ModelExtractionContext
+  ): { goals: Goal[]; clarification?: string } {
     const structured = intent.goals.filter(
       (goal) => goal.kind.length > 0 && goal.description.length > 0
     );

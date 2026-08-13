@@ -188,7 +188,9 @@ export interface TriggerRunOutcome {
 export async function runDueTriggers(
   store: MemoryStore,
   opts: {
-    reason: (prompt: string) => Promise<{ result: { kind: string } }> | { result: { kind: string } };
+    reason: (
+      prompt: string
+    ) => Promise<{ result: { kind: string } }> | { result: { kind: string } };
     now?: string;
   }
 ): Promise<TriggerRunOutcome[]> {

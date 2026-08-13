@@ -1,6 +1,10 @@
 import type { Intent } from '@athena-os/core';
 import type { ModelClient, ModelExtraction, ModelExtractionContext } from '../llm/modelClient.js';
-import { filterGoalsToContext, goalExtractionInstructions, parseGoalsJson } from '../llm/goalPrompt.js';
+import {
+  filterGoalsToContext,
+  goalExtractionInstructions,
+  parseGoalsJson,
+} from '../llm/goalPrompt.js';
 import { appleModelConfigFromEnv, type AppleModelConfig } from './appleModelConfig.js';
 import { runAppleBridge } from './appleModelBridge.js';
 

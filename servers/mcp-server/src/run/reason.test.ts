@@ -129,7 +129,9 @@ describe('reasonForRun (deterministic)', () => {
     try {
       // A prompt the deterministic extractor cannot satisfy, so the Apple model is
       // actually consulted (and forced unavailable here) and the runner must fall back.
-      const { backendId, result } = reasonForRun('plan a weekend trip to Kyoto', { backend: 'auto' });
+      const { backendId, result } = reasonForRun('plan a weekend trip to Kyoto', {
+        backend: 'auto',
+      });
       expect(backendId).toBe('deterministic');
       expect(result.kind).toBe('clarificationRequired');
     } finally {

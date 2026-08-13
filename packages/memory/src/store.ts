@@ -1,4 +1,4 @@
-import type { MemoryEntry, MemoryReader, MemoryStore } from '@athena-os/core';
+import type { MemoryEntry, MemoryStore } from '@athena-os/core';
 
 /** Supersession (RFC-0013 §5): later recordedAt wins; ties broken by id ascending. */
 function isNewer(a: MemoryEntry, b: MemoryEntry): boolean {

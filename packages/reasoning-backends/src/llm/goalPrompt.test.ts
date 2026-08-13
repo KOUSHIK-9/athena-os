@@ -83,7 +83,11 @@ describe('Apple planner contract (goalPrompt)', () => {
     const ctx: ModelExtractionContext = {
       availableGoalKinds: ['searchFlights', 'bookHotel'],
       capabilities: [
-        { id: 'flights-search', description: 'Search flight itineraries', goalKinds: ['searchFlights'] },
+        {
+          id: 'flights-search',
+          description: 'Search flight itineraries',
+          goalKinds: ['searchFlights'],
+        },
         { id: 'hotels-search', description: 'Find hotel options', goalKinds: ['bookHotel'] },
       ],
     };

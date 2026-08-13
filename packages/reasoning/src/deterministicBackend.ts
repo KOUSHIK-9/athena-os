@@ -42,7 +42,10 @@ export class DeterministicReasoningBackend implements ReasoningBackend {
 
     const goals = this.goalExtractor.extractGoals(intent);
     if (goals.length === 0) {
-      return withMemory({ kind: 'clarificationRequired', reason: 'intent carries no extractable goals' });
+      return withMemory({
+        kind: 'clarificationRequired',
+        reason: 'intent carries no extractable goals',
+      });
     }
 
     const { accepted, rejected } = this.constraintChecker.checkGoals(goals, intent.constraints);

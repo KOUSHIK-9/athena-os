@@ -20,8 +20,8 @@ import type { SemanticElement, SemanticModel, Selector } from '@athena-os/core';
 
 vi.mock('../sessionManager.js', () => {
   let executeMock:
-    | ((action: { type: string; text?: string; selector?: Selector }) => Promise<unknown>)
-    | null = null;
+    ((action: { type: string; text?: string; selector?: Selector }) => Promise<unknown>) | null =
+    null;
   let activeApp: { bundleId: string; name: string } = {
     bundleId: 'com.apple.SpringBoard',
     name: 'Home',
@@ -32,7 +32,9 @@ vi.mock('../sessionManager.js', () => {
       getExecutor: () => ({
         execute: (action: { type: string; text?: string; selector?: Selector }) => {
           if (action.type === 'launchApp') launchCalls += 1;
-          return executeMock ? executeMock(action) : Promise.resolve({ success: true, duration: 100 });
+          return executeMock
+            ? executeMock(action)
+            : Promise.resolve({ success: true, duration: 100 });
         },
         getSession: () => ({ id: 'test-session', deviceUdid: 'test-udid' }),
         getActiveApp: () => Promise.resolve(activeApp),
@@ -57,9 +59,7 @@ vi.mock('../sessionManager.js', () => {
 
 interface SessionTest {
   setExecuteMock: (
-    fn:
-      | ((action: { type: string; text?: string; selector?: Selector }) => Promise<unknown>)
-      | null
+    fn: ((action: { type: string; text?: string; selector?: Selector }) => Promise<unknown>) | null
   ) => void;
   setActiveApp: (app: { bundleId: string; name: string }) => void;
   getLaunchCalls: () => number;
