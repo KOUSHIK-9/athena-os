@@ -1,6 +1,6 @@
 # RFC-0014: Memory Retrieval
 
-- Status: **Draft**
+- Status: **Accepted**
 - Reference Implementation: pending — implements only after the Memory stack
   (RFC-0014/0015/0016) is accepted and reviewed.
 - Authors: Athena Core Team
@@ -96,25 +96,31 @@ interplay is RFC-0015 territory.
 
 ## 2. Context Assembly (the read path)
 
-RFC-0013 bound the path `Memory → Context → ReasoningBackend`. This RFC
-defines assembly as an explicit, small function:
+RFC-0013 bound the path `Memory → Context → ReasoningBackend` and fixed the
+integration seam in its *Contract* section: `reason(intent, registry)` stays
+**exact**, and the engine hands a memory-aware backend an optional read-only
+`memory?: MemoryReader` (RFC-0013 §The Contract). This RFC defines the
+*retrieval* half of that seam — the deterministic function the engine runs
+against the `MemoryReader` to select the entries a candidate may see:
 
 ```
-MemoryReader
+MemoryReader            (handed off by the engine — RFC-0013 §The Contract)
    │
    ▼
-retrieve(intentKind, requested) → entries      (this RFC)
+retrieve(request, memory) → RetrievalResult { entries }     (this RFC)
    │
    ▼
-Context (RFC-0005 §4, session-scoped)
-{ intent, memoryEntries: entries }
-   │
-   ▼
-ReasoningBackend (candidate)                     (RFC-0012)
+ReasoningBackend (candidate)                                (RFC-0012)
+   — receives memory via the `memory?: MemoryReader` handoff;
+     `reason(intent, registry)` is unchanged (RFC-0013 §The Contract)
 ```
 
+- `RetrievalResult` is the **output of this RFC**: the ordered, de-duplicated
+  `entries`. It is **not** the RFC-0005 §4 `Context`; it is the persistent
+  memory portion that the engine merges into the session `Context` (RFC-0005 §4)
+  and/or exposes to the backend through the `MemoryReader` handoff.
 - Assembly is **read-only**: entries cross the boundary as immutable
-  `MemoryEntry` values; the Context carries no write path.
+  `MemoryEntry` values; the retriever never writes.
 - Entries appear in the retriever's total order. Projection of preferences
   into soft constraints, if any, happens at planning time (RFC-0015) — never
   inside retrieval.
@@ -174,7 +180,10 @@ Model-backed retriever    → certified by the same conformance
 
 ## 6. Reference Implementation Map
 
-Implementation lives in a new core package, `packages/memory`:
+The Memory **model types** (`MemoryEntry`, `MemoryReader`, `MemoryKind`) are
+defined in `@athena-os/core` per RFC-0013 §The Contract (one concept, one
+canonical definition). Retrieval **implementation** lives in a new package,
+`packages/memory`, which depends on those core types:
 
 | Concern | Module |
 |---------|--------|
@@ -200,12 +209,24 @@ accepted, per RFC-0013's discipline note.
   baseline — the certified baseline is `requested`-subject targeted; broad
   recall is the model-backed variant of §5.
 
+## Glossary
+
+To avoid colliding with RFC-0005 §4's use of "Context", this RFC fixes the
+following terms:
+
+| Term | Meaning |
+|------|---------|
+| **Context** (RFC-0005 §4) | The ambient world state at planning time (device, user, environment, session history). Representation-independent; session-scoped. Memory is its *persistent* portion. |
+| **Memory** (RFC-0013) | The persisted, typed knowledge store (`fact` / `preference` / `experience` / `trigger`). The persistent backing of Context. |
+| **RetrievalResult** (this RFC) | The ordered, de-duplicated `MemoryEntry[]` a retriever returns for a request. It is **not** the RFC-0005 §4 Context. |
+| **MemoryReader** (RFC-0013 §The Contract) | The read-only handoff the engine gives a memory-aware backend (`memory?: MemoryReader`); retrieval runs against it. |
+
 ## Cross-References
 
 - RFC-0013 — the memory model: entity types, lifecycle, subjects, and the
   authority boundary retrieval must honor.
 - RFC-0005 §4 — Context, the transport that carries Memory into reasoning;
-  this RFC's response plugs into it.
+  this RFC's `RetrievalResult` is merged into it (see §2).
 - RFC-0012 — the ReasoningBackend contract whose candidate path consumes
   Context.
 - RFC-0011 — the validator that retrieval can never bypass.

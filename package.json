@@ -11,6 +11,7 @@
     "test": "turbo test",
     "test:unit": "turbo test --filter=@athena-os/*",
     "test:architecture": "node scripts/architecture-check.mjs",
+    "test:rfcs": "node scripts/rfc-consistency-check.mjs",
     "lint": "turbo lint",
     "lint:fix": "turbo lint:fix",
     "format": "turbo format",

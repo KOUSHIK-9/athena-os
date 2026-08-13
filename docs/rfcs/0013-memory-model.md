@@ -56,9 +56,11 @@ Reasoning Backend without changing the contract that produced the plan.
    ("ambient state at planning time") is session-scoped and "does not
    persist across unrelated Intents unless explicitly carried forward."
    Memory *is* that explicit carry-forward: Memory persists, Context is its
-   session-scoped read, and Memory reaches the Reasoning Backend through
-   the existing Context input of RFC-0009 §1 — no new input kind, no
-   amendment to an accepted contract.
+   session-scoped read. Memory reaches the Reasoning Backend in two consistent
+   ways (see §The Contract): it informs the RFC-0009 §1 `Context` input —
+   Memory is its persistent portion — and a memory-aware backend may
+   additionally read it directly through the `memory?: MemoryReader` handoff.
+   No new input kind is introduced and `reason(intent, registry)` stays exact.
 
 ## 3. Memory Taxonomy
 
