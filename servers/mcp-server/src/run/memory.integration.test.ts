@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { MemoryEntry } from '@athena-os/core';
 import { InMemoryStore } from '@athena-os/memory';
-import { makeIntent, reasonForRun } from './reason.js';
+import { reasonForRun } from './reason.js';
 
 describe('Memory → run-layer reasoning (RFC-0013/0014)', () => {
   it('threads a recorded preference through reasonForRun to the backend result', () => {
