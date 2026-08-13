@@ -58,3 +58,12 @@ test('error result (no json) is neither extraction nor plan success', () => {
   assert.equal(m.planValid, false);
   assert.equal(m.executionSuccess, false);
 });
+
+test('result with missing/unknown kind is treated as error, not extraction success', () => {
+  const m = deriveMetrics(mk({ success: false, error: 'model returned invalid JSON' }));
+  assert.equal(m.kind, 'error');
+  assert.equal(m.extractionSuccess, false);
+  assert.equal(m.planValid, false);
+  assert.equal(m.executionSuccess, false);
+  assert.equal(m.clarification, 'model returned invalid JSON');
+});

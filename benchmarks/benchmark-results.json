@@ -1,0 +1,279 @@
+{
+  "generatedAt": "2026-08-13T06:00:54.158Z",
+  "mode": "execution (simulator)",
+  "backends": [
+    "deterministic",
+    "apple"
+  ],
+  "scenarios": [
+    "open-settings",
+    "reply-message",
+    "photo-cleanup",
+    "launch-camera",
+    "toggle-dark-mode",
+    "flight-search",
+    "weekend-trip"
+  ],
+  "results": {
+    "deterministic": {
+      "backendId": "deterministic",
+      "model": "deterministic-keyword",
+      "networkDependency": false,
+      "cost": "$0 (local heuristic)",
+      "scenarios": 7,
+      "extractionSuccessRate": 0.42857142857142855,
+      "planValidityRate": 0.42857142857142855,
+      "executionSuccessRate": 0.14285714285714285,
+      "clarificationRate": 0.5714285714285714,
+      "avgLatencyMs": 14137,
+      "avgStepLatencyMs": 14137,
+      "raw": [
+        {
+          "scenarioId": "open-settings",
+          "prompt": "Open Settings",
+          "ok": true,
+          "kind": "executed",
+          "extractionSuccess": true,
+          "planValid": true,
+          "executionSuccess": true,
+          "latencyMs": 27955,
+          "goals": [
+            "launchApp"
+          ],
+          "steps": 1,
+          "executedSteps": 1,
+          "executedSuccess": 1
+        },
+        {
+          "scenarioId": "reply-message",
+          "prompt": "reply to Alice",
+          "ok": false,
+          "kind": "clarificationRequired",
+          "extractionSuccess": false,
+          "planValid": false,
+          "executionSuccess": false,
+          "clarification": "no capability for goals: sendMessage",
+          "latencyMs": 665,
+          "goals": [],
+          "steps": 0,
+          "executedSteps": 0,
+          "executedSuccess": 0
+        },
+        {
+          "scenarioId": "photo-cleanup",
+          "prompt": "Delete screenshots older than 30 days and disconnect the photo service",
+          "ok": false,
+          "kind": "clarificationRequired",
+          "extractionSuccess": false,
+          "planValid": false,
+          "executionSuccess": false,
+          "clarification": "intent carries no extractable goals",
+          "latencyMs": 351,
+          "goals": [],
+          "steps": 0,
+          "executedSteps": 0,
+          "executedSuccess": 0
+        },
+        {
+          "scenarioId": "launch-camera",
+          "prompt": "open camera",
+          "ok": false,
+          "kind": "executionFailed",
+          "extractionSuccess": true,
+          "planValid": true,
+          "executionSuccess": false,
+          "clarification": "Failed to launch app: com.apple.camera",
+          "latencyMs": 44406,
+          "goals": [],
+          "steps": 0,
+          "executedSteps": 2,
+          "executedSuccess": 0
+        },
+        {
+          "scenarioId": "toggle-dark-mode",
+          "prompt": "toggle dark mode",
+          "ok": false,
+          "kind": "executionFailed",
+          "extractionSuccess": true,
+          "planValid": true,
+          "executionSuccess": false,
+          "clarification": "could not resolve element \"dark mode\" on the current screen",
+          "latencyMs": 24676,
+          "goals": [],
+          "steps": 0,
+          "executedSteps": 2,
+          "executedSuccess": 0
+        },
+        {
+          "scenarioId": "flight-search",
+          "prompt": "find me flights to Tokyo under $500",
+          "ok": false,
+          "kind": "clarificationRequired",
+          "extractionSuccess": false,
+          "planValid": false,
+          "executionSuccess": false,
+          "clarification": "intent carries no extractable goals",
+          "latencyMs": 611,
+          "goals": [],
+          "steps": 0,
+          "executedSteps": 0,
+          "executedSuccess": 0
+        },
+        {
+          "scenarioId": "weekend-trip",
+          "prompt": "plan a weekend trip to Kyoto",
+          "ok": false,
+          "kind": "clarificationRequired",
+          "extractionSuccess": false,
+          "planValid": false,
+          "executionSuccess": false,
+          "clarification": "intent carries no extractable goals",
+          "latencyMs": 298,
+          "goals": [],
+          "steps": 0,
+          "executedSteps": 0,
+          "executedSuccess": 0
+        }
+      ]
+    },
+    "apple": {
+      "backendId": "apple",
+      "model": "apple:system-language-model",
+      "networkDependency": false,
+      "cost": "$0 (on-device FoundationModels)",
+      "scenarios": 7,
+      "extractionSuccessRate": 0.8571428571428571,
+      "planValidityRate": 0.8571428571428571,
+      "executionSuccessRate": 0.7142857142857143,
+      "clarificationRate": 0,
+      "avgLatencyMs": 63436,
+      "avgStepLatencyMs": 63436,
+      "raw": [
+        {
+          "scenarioId": "open-settings",
+          "prompt": "Open Settings",
+          "ok": true,
+          "kind": "executed",
+          "extractionSuccess": true,
+          "planValid": true,
+          "executionSuccess": true,
+          "latencyMs": 45209,
+          "goals": [
+            "launchApp"
+          ],
+          "steps": 1,
+          "executedSteps": 1,
+          "executedSuccess": 1
+        },
+        {
+          "scenarioId": "reply-message",
+          "prompt": "reply to Alice",
+          "ok": true,
+          "kind": "executed",
+          "extractionSuccess": true,
+          "planValid": true,
+          "executionSuccess": true,
+          "latencyMs": 92941,
+          "goals": [
+            "launchApp",
+            "tap",
+            "type",
+            "tap"
+          ],
+          "steps": 4,
+          "executedSteps": 4,
+          "executedSuccess": 4
+        },
+        {
+          "scenarioId": "photo-cleanup",
+          "prompt": "Delete screenshots older than 30 days and disconnect the photo service",
+          "ok": true,
+          "kind": "executed",
+          "extractionSuccess": true,
+          "planValid": true,
+          "executionSuccess": true,
+          "latencyMs": 50633,
+          "goals": [
+            "screenshot",
+            "screenshot"
+          ],
+          "steps": 2,
+          "executedSteps": 2,
+          "executedSuccess": 2
+        },
+        {
+          "scenarioId": "launch-camera",
+          "prompt": "open camera",
+          "ok": false,
+          "kind": "executionFailed",
+          "extractionSuccess": true,
+          "planValid": true,
+          "executionSuccess": false,
+          "clarification": "Failed to launch app: com.apple.camera",
+          "latencyMs": 81720,
+          "goals": [],
+          "steps": 0,
+          "executedSteps": 2,
+          "executedSuccess": 0
+        },
+        {
+          "scenarioId": "toggle-dark-mode",
+          "prompt": "toggle dark mode",
+          "ok": true,
+          "kind": "executed",
+          "extractionSuccess": true,
+          "planValid": true,
+          "executionSuccess": true,
+          "latencyMs": 34962,
+          "goals": [
+            "tap"
+          ],
+          "steps": 1,
+          "executedSteps": 1,
+          "executedSuccess": 1
+        },
+        {
+          "scenarioId": "flight-search",
+          "prompt": "find me flights to Tokyo under $500",
+          "ok": true,
+          "kind": "executed",
+          "extractionSuccess": true,
+          "planValid": true,
+          "executionSuccess": true,
+          "latencyMs": 81922,
+          "goals": [
+            "type",
+            "tap",
+            "type",
+            "type",
+            "tap",
+            "tap",
+            "tap"
+          ],
+          "steps": 7,
+          "executedSteps": 7,
+          "executedSuccess": 7
+        },
+        {
+          "scenarioId": "weekend-trip",
+          "prompt": "plan a weekend trip to Kyoto",
+          "ok": false,
+          "kind": "error",
+          "extractionSuccess": false,
+          "planValid": false,
+          "executionSuccess": false,
+          "clarification": "model returned invalid JSON: SyntaxError: Expected ',' or ']' after array element in JSON at position 7191 (line 96 column 77)",
+          "latencyMs": 56663,
+          "goals": [],
+          "steps": 0,
+          "executedSteps": 0,
+          "executedSuccess": 0
+        }
+      ]
+    }
+  },
+  "recommendation": {
+    "defaultBackend": "apple",
+    "rationale": "Ranked by plan validity rate, then execution success rate, then preference for offline/zero-cost backends."
+  }
+}

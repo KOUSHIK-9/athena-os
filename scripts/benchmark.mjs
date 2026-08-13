@@ -86,21 +86,34 @@ export function deriveMetrics(run) {
       goals: [],
     };
   }
-  const kind = r.kind;
+  const KNOWN_KINDS = [
+    'plan',
+    'executed',
+    'executionPlan',
+    'executionFailed',
+    'clarificationRequired',
+    'rejected',
+    'error',
+  ];
+  const kind = typeof r.kind === 'string' && KNOWN_KINDS.includes(r.kind) ? r.kind : 'error';
   const steps = r.plan?.steps ?? [];
   const executed = r.executed ?? [];
   const goals = (r.plan?.steps ?? []).map((s) => s.capabilityId).filter(Boolean);
   const extractionSuccess = kind !== 'clarificationRequired' && kind !== 'error';
   const planValid =
-    kind === 'plan' ||
-    kind === 'executed' ||
-    kind === 'executionPlan' ||
-    kind === 'executionFailed';
+    kind === 'plan' || kind === 'executed' || kind === 'executionPlan' || kind === 'executionFailed';
   const executionSuccess =
     kind === 'executed' && executed.length > 0 && executed.every((s) => s.success);
-  const clarification = kind === 'clarificationRequired' ? r.reason : kind === 'executionFailed' ? r.error : undefined;
+  const clarification =
+    kind === 'clarificationRequired'
+      ? r.reason
+      : kind === 'executionFailed'
+        ? r.error
+        : kind === 'error'
+          ? r.error ?? r.parseError ?? 'invalid model output'
+          : undefined;
   return {
-    ok: r.success !== false,
+    ok: r.success !== false && kind !== 'error',
     kind,
     extractionSuccess,
     planValid,

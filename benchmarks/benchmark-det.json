@@ -1,0 +1,143 @@
+{
+  "generatedAt": "2026-08-13T05:38:26.155Z",
+  "mode": "execution (simulator)",
+  "backends": [
+    "deterministic"
+  ],
+  "scenarios": [
+    "open-settings",
+    "reply-message",
+    "photo-cleanup",
+    "launch-camera",
+    "toggle-dark-mode",
+    "flight-search",
+    "weekend-trip"
+  ],
+  "results": {
+    "deterministic": {
+      "backendId": "deterministic",
+      "model": "deterministic-keyword",
+      "networkDependency": false,
+      "cost": "$0 (local heuristic)",
+      "scenarios": 7,
+      "extractionSuccessRate": 0.42857142857142855,
+      "planValidityRate": 0.42857142857142855,
+      "executionSuccessRate": 0.14285714285714285,
+      "clarificationRate": 0.5714285714285714,
+      "avgLatencyMs": 14137,
+      "avgStepLatencyMs": 14137,
+      "raw": [
+        {
+          "scenarioId": "open-settings",
+          "prompt": "Open Settings",
+          "ok": true,
+          "kind": "executed",
+          "extractionSuccess": true,
+          "planValid": true,
+          "executionSuccess": true,
+          "latencyMs": 27955,
+          "goals": [
+            "launchApp"
+          ],
+          "steps": 1,
+          "executedSteps": 1,
+          "executedSuccess": 1
+        },
+        {
+          "scenarioId": "reply-message",
+          "prompt": "reply to Alice",
+          "ok": false,
+          "kind": "clarificationRequired",
+          "extractionSuccess": false,
+          "planValid": false,
+          "executionSuccess": false,
+          "clarification": "no capability for goals: sendMessage",
+          "latencyMs": 665,
+          "goals": [],
+          "steps": 0,
+          "executedSteps": 0,
+          "executedSuccess": 0
+        },
+        {
+          "scenarioId": "photo-cleanup",
+          "prompt": "Delete screenshots older than 30 days and disconnect the photo service",
+          "ok": false,
+          "kind": "clarificationRequired",
+          "extractionSuccess": false,
+          "planValid": false,
+          "executionSuccess": false,
+          "clarification": "intent carries no extractable goals",
+          "latencyMs": 351,
+          "goals": [],
+          "steps": 0,
+          "executedSteps": 0,
+          "executedSuccess": 0
+        },
+        {
+          "scenarioId": "launch-camera",
+          "prompt": "open camera",
+          "ok": false,
+          "kind": "executionFailed",
+          "extractionSuccess": true,
+          "planValid": true,
+          "executionSuccess": false,
+          "clarification": "Failed to launch app: com.apple.camera",
+          "latencyMs": 44406,
+          "goals": [],
+          "steps": 0,
+          "executedSteps": 2,
+          "executedSuccess": 0
+        },
+        {
+          "scenarioId": "toggle-dark-mode",
+          "prompt": "toggle dark mode",
+          "ok": false,
+          "kind": "executionFailed",
+          "extractionSuccess": true,
+          "planValid": true,
+          "executionSuccess": false,
+          "clarification": "could not resolve element \"dark mode\" on the current screen",
+          "latencyMs": 24676,
+          "goals": [],
+          "steps": 0,
+          "executedSteps": 2,
+          "executedSuccess": 0
+        },
+        {
+          "scenarioId": "flight-search",
+          "prompt": "find me flights to Tokyo under $500",
+          "ok": false,
+          "kind": "clarificationRequired",
+          "extractionSuccess": false,
+          "planValid": false,
+          "executionSuccess": false,
+          "clarification": "intent carries no extractable goals",
+          "latencyMs": 611,
+          "goals": [],
+          "steps": 0,
+          "executedSteps": 0,
+          "executedSuccess": 0
+        },
+        {
+          "scenarioId": "weekend-trip",
+          "prompt": "plan a weekend trip to Kyoto",
+          "ok": false,
+          "kind": "clarificationRequired",
+          "extractionSuccess": false,
+          "planValid": false,
+          "executionSuccess": false,
+          "clarification": "intent carries no extractable goals",
+          "latencyMs": 298,
+          "goals": [],
+          "steps": 0,
+          "executedSteps": 0,
+          "executedSuccess": 0
+        }
+      ]
+    }
+  },
+  "recommendation": {
+    "defaultBackend": "deterministic",
+    "rationale": "Ranked by plan validity rate, then execution success rate, then preference for offline/zero-cost backends."
+  }
+}
