@@ -1,0 +1,12 @@
+[
+  { "id": "open-settings", "prompt": "Open Settings" },
+  { "id": "reply-message", "prompt": "reply to Alice" },
+  {
+    "id": "photo-cleanup",
+    "prompt": "Delete screenshots older than 30 days and disconnect the photo service"
+  },
+  { "id": "launch-camera", "prompt": "open camera" },
+  { "id": "toggle-dark-mode", "prompt": "toggle dark mode" },
+  { "id": "flight-search", "prompt": "find me flights to Tokyo under $500" },
+  { "id": "weekend-trip", "prompt": "plan a weekend trip to Kyoto" }
+]
