@@ -3,7 +3,13 @@
 - Status: **Accepted**
 - Reference Implementation: **implemented** — `trigger` MemoryEntry kind is modeled
   in `packages/memory` and excluded from always-eligible retrieval (returned only
-  when explicitly `requested`), per §2. Execution-side trigger firing is a follow-up.
+  when explicitly `requested`), per §2. Execution-side firing is implemented in
+  `servers/mcp-server/src/run/triggers.ts`: `runDueTriggers` evaluates due
+  `pending` triggers, fires each (read-only condition check), synthesizes an
+  Intent through the normal RFC-0009 pipeline, and advances the trigger's state
+  from the actual outcome (`pending → fired → satisfied`, or `fired → re-armed →
+  pending` for recurring). Successful executions are also written back as
+  `experience` MemoryEntries (`recordExperience`).
 - Authors: Athena Core Team
 - Created: 2026-08-13
 - Depends on: RFC-0005 (Intent Model), RFC-0008 (Decision Point Protocol),
