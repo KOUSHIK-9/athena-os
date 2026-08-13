@@ -1,12 +1,12 @@
 # Milestone 5 — Memory Product Loop (Developer Preview)
 
-- Version: `v0.5.0-preview`
+- Version: `v1.0.0` (Developer Preview)
 - Branch: `master`
 - Date: 2026-08-13
 - Depends on: RFC-0011 (Deterministic Reasoning Engine), RFC-0012 (Reasoning
   Backend Contract), RFC-0013 (Memory Model), RFC-0014 (Memory Retrieval),
   RFC-0015 (Preferences), RFC-0016 (Triggers)
-- Status: **Developer Preview — first complete product loop**
+- Status: **Developer Preview — 100% complete (released as `v1.0.0`)**
 
 ## Summary
 
@@ -89,5 +89,28 @@ revision of already-Accepted RFCs. Those remain deferred milestones.
   Intelligence).
 - Architecture gate (`pnpm test:architecture`) passes: dependency pyramid and
   Appium boundary enforced.
-- Versioning uses changesets (`pnpm changeset`); no version bump or publish has
-  been performed for this preview yet.
+- Versioning uses changesets (`pnpm changeset`).
+
+## Release (`v1.0.0`)
+
+This milestone is the **Athena Developer Preview v1.0.0** finish line — 100% of
+the current product. It was reached under ATHENA FINAL-100 MODE: RFCs
+0013–0016 finalized and Accepted, a Memory conformance suite added
+(`packages/memory/src/conformance.test.ts`), the full workspace gate is green
+(build / test / lint / format / architecture / RFC consistency), a memory
+benchmark added, the CLI gained test coverage, and the docs (README, ROADMAP,
+this milestone) were updated to the v1.0 / v2.0 split.
+
+- Tag: `v1.0.0`.
+- Not published to npm (publish is a separate, opt-in step).
+- Physical-iPhone validation remains a **post-release** track and does not block
+  the v1.0.0 completion.
+
+## What 100% does and does not mean
+
+- ✅ Means: a complete, shippable Developer Preview — Apple on-device reasoning,
+  the Memory loop (preferences, experiences, triggers), end-to-end execution on
+  the iPhone 17 Simulator, and the full gate suite green.
+- ⏸ Does **not** mean: Learning (Phase 6), Multi-Agent (Phase 7), or the full
+  Athena OS vision (Phase 8) are done. Those are the **v2.0** roadmap, not
+  missing pieces of the current product.

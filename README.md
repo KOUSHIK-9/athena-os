@@ -14,8 +14,11 @@ Athena is built around a single, immutable flow:
 User
   │
   ▼
-Planner           (decides what to do - not yet wired)
-  │
+Reasoning         (Apple on-device by default; deterministic + LLM backends behind
+  │                the RFC-0012 contract; the Validator is the sole authority)
+  ▼
+Memory            (RFC-0013..0016: preferences, experiences, triggers dock at the
+  │                backend seam as read-only context; never authorizes execution)
   ▼
 Action Pipeline   (Request → Validation → Execution → Verification → Telemetry → Result)
   │
@@ -26,7 +29,7 @@ Execution Engine  (executor, strategies, per-action verification)
 Driver            (the one layer allowed to know about Appium/WebDriverAgent)
   │
   ▼
-Device
+Device            (iPhone 17 Simulator or physical device)
 ```
 
 The protocol that carries an action end-to-end is the Athena Protocol:
@@ -69,7 +72,8 @@ athena-os/
 ### Prerequisites
 
 - macOS with Xcode (required for device automation via WebDriverAgent)
-- iOS Device (physical, not simulator) with Developer Mode enabled
+- An iOS target: **iPhone 17 Simulator** (recommended for the Developer Preview) **or** a physical device with Developer Mode enabled
+- Apple Intelligence enabled for on-device reasoning (the `apple` backend); falls back to the deterministic backend automatically when unavailable
 - Node.js 20+ (via nvm/fnm)
 - pnpm 9+
 - Appium 2+ (server, started separately)
@@ -85,14 +89,18 @@ pnpm install
 pnpm build
 
 # Check the environment (Xcode, devices, WebDriverAgent)
-pnpm --filter @athena-os/cli dev -- doctor        # or: node apps/cli/dist/index.js doctor
+node apps/cli/dist/index.js doctor
 
 # List devices
 node apps/cli/dist/index.js devices
 
-# Connect to the single available device and take a verified screenshot
-node apps/cli/dist/index.js connect
-node apps/cli/dist/index.js screenshot
+# Run an intent end-to-end (reasoning → validated plan → execution)
+node apps/cli/dist/index.js run "Open Settings and toggle Bluetooth"
+# Preview the plan only, without touching the device:
+node apps/cli/dist/index.js run "Open Settings and toggle Bluetooth" --dry-run
+
+# Memory: preferences and experiences are recorded and retrieved automatically
+# by the Apple on-device reasoning path (RFC-0013..0016).
 ```
 
 ## Development
@@ -130,6 +138,7 @@ Releases are tagged milestones, not just versions:
 | **`v0.2.0-alpha.2`** | **Screenshot lifecycle (metadata + save + verify)** |
 | **`v0.3.0-alpha.1`** | **Execution Platform baseline (Milestone 2)** |
 | **`v0.4.0-alpha.1`** | **Deterministic Cognition baseline (Milestone 4)** |
+| **`v1.0.0`** | **Developer Preview — Apple on-device reasoning + Memory loop, runtime-verified on iPhone 17 Simulator (Milestone 5)** |
 
 ## Documentation
 

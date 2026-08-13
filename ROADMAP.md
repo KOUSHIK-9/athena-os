@@ -58,7 +58,7 @@ not geometrically.
 *What it proved:* Athena has a language — vocabulary, grammar, and rules —
 independent of any model or device.
 
-## Phase 4 — Cognition 🚧 **Current**
+## Phase 4 — Cognition ✅
 
 **Baseline Established:** `v0.4.0-alpha.1` (Milestone 4) — deterministic
 reasoning engine complete.
@@ -79,28 +79,53 @@ reasoning engine complete.
   parity fixtures exactly; the LLM backend additionally passes the 2
   behavioral canons. The validator stays the authority; the model is never
   trusted, only validated.
-- Both backends implement RFC-0009; the Execution Plan remains the stable
-  contract.
+- **Apple on-device backend added** — `packages/reasoning-backends` ships an
+  `AppleModelClient` that binds the on-device Apple FoundationModels bridge.
+  It is the **preferred default**; the engine auto-falls back to the
+  deterministic backend when Apple Intelligence is unavailable. This is the
+  model-backed backend behind the same `ModelClient` port — no protocol change.
 
 *This phase has proven:* models are replaceable — protocols are not. The
 architecture is complete independently of any model; a real provider
 (GPT/Claude/Gemini) implements the `ModelClient` port behind the same
 contract.
 
-## Phase 5 — Memory
+## Phase 5 — Memory ✅ (Developer Preview v1.0)
 
-Planned: persistent user memory, learned preferences, intent history,
-recurring-intent templates (Trigger + template Intents). Governed by RFC-0007.
+**Baseline Established:** `v1.0.0` (Milestone 5) — the Memory product loop is
+runtime-verified on an iPhone 17 Simulator.
+
+- RFC-0013: The Memory Model (**Accepted**, implemented) — four canonical
+  types (`fact`, `preference`, `experience`, `trigger`), append-only
+  supersession, ownership, and the authority boundary. The validator stays
+  memory-blind.
+- RFC-0014: Memory Retrieval (**Accepted**, implemented) — the deterministic
+  `DeterministicRetriever` (scope → kind → stability ordering), no heuristics.
+- RFC-0015: Preferences (**Accepted**, implemented) — preferences retrieve as
+  always-eligible context and project only to *soft* constraints at planning
+  time; they never authorize execution.
+- RFC-0016: Triggers (**Accepted**, implemented) — execution-side firing
+  (`pending → fired → satisfied` / `re-armed → pending` / `cancelled`),
+  experience write-back on verified success only, and no false-success memory.
+- End-to-end: intent → Apple on-device reasoning → memory-aware plan →
+  validated execution → verified result → experience written back, including
+  trigger firing and preference retrieval as context.
+
+*This phase has proven:* Memory informs reasoning but never authorizes it. The
+loop closes on-device, locally, with the Validator as the sole authority.
 
 ## Phase 6 — Learning
 
-Planned: adaptation from execution outcomes — learning which plans verify
-reliably, refinement of recovery strategies from telemetry.
+**Post–Developer Preview (v2.0 roadmap).** Planned: adaptation from execution
+outcomes — learning which plans verify reliably, refinement of recovery
+strategies from telemetry. The `experience` Memory type already records the raw
+input for this; Learning consumes it without changing the v1.0 contract.
 
 ## Phase 7 — Multi-Agent
 
-Planned: multiple execution targets and coordinating agents speaking the same
-language (RFC-0005..0009), one reasoning contract.
+**Post–Developer Preview (v2.0 roadmap).** Planned: multiple execution targets
+and coordinating agents speaking the same language (RFC-0005..0009), one
+reasoning contract.
 
 ## Phase 8 — Athena OS
 
@@ -108,6 +133,15 @@ The full vision: a protocol-driven cognitive execution platform across
 digital systems — iPhone today, other surfaces tomorrow.
 
 ---
+
+## Release lines
+
+- **Athena Developer Preview `v1.0.0`** — the current finish line. Apple
+  on-device reasoning + the Memory loop, runtime-verified on an iPhone 17
+  Simulator. Everything in Phases 1–5 is in scope and complete.
+- **Athena `v2.0`** — Learning, Multi-Agent, and broader surface support
+  (Phases 6–8). These are *future releases*, not missing pieces of the
+  Developer Preview.
 
 ## The guiding questions
 
@@ -121,9 +155,10 @@ Every feature must answer before any code is written:
 
 ## Current Phase
 
-**Phase 4 — Cognition**
+**Developer Preview `v1.0.0` — complete.**
 
-**Current Objective:** RFC-0011 and RFC-0012 are both complete — the
-deterministic protocol and the backend contract + conformance, with the
-model-backed backend behind the `ModelClient` port. Next: a real provider
-adapter (GPT/Claude/Gemini) implementing that port, and Phase 5 (Memory).
+Phases 1–5 (Execution, Understanding, Conceptual Language, Cognition, Memory)
+are done and runtime-verified on an iPhone 17 Simulator. The remaining roadmap
+(Phases 6–8: Learning, Multi-Agent, Athena OS) is the **v2.0** line and is
+explicitly out of scope for the Developer Preview. Physical-iPhone validation is
+a post-release track that does not block calling `v1.0.0` complete.

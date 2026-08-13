@@ -1,8 +1,13 @@
-# Developer Preview — Release Notes (v0.5.0-preview)
+# Developer Preview — Release Notes (v1.0.0)
 
 Status: **Runtime-verified** on a booted iPhone 17 Simulator. First complete
 Athena product loop: intent → Apple on-device reasoning → memory-aware plan →
 validated execution → verified result → experience written back.
+
+**`v1.0.0` is the Athena Developer Preview 100% finish line** (ATHENA
+FINAL-100 MODE). Everything in Phases 1–5 is complete and the full workspace
+gate is green. Learning, Multi-Agent, and the broader Athena OS vision are the
+**v2.0** roadmap and are explicitly out of scope for this release.
 
 Tracking milestone: `docs/milestones/MILESTONE-5.md`.
 
