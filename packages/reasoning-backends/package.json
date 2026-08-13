@@ -17,6 +17,7 @@
     "dev": "tsc -w",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
+    "compare": "vitest run --passWithNoTests src/compare.test.ts",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
     "format": "prettier --write src --ignore-path ../../.prettierignore",
