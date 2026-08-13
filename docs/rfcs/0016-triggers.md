@@ -1,8 +1,9 @@
 # RFC-0016: Triggers
 
 - Status: **Accepted**
-- Reference Implementation: pending — part of the deterministic Memory stack
-  (RFC-0013 / RFC-0014), implemented after this RFC is Accepted.
+- Reference Implementation: **implemented** — `trigger` MemoryEntry kind is modeled
+  in `packages/memory` and excluded from always-eligible retrieval (returned only
+  when explicitly `requested`), per §2. Execution-side trigger firing is a follow-up.
 - Authors: Athena Core Team
 - Created: 2026-08-13
 - Depends on: RFC-0005 (Intent Model), RFC-0008 (Decision Point Protocol),

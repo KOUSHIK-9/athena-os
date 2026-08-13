@@ -1,4 +1,4 @@
-import type { CapabilityRegistry, Goal, Intent } from '@athena-os/core';
+import type { CapabilityRegistry, Goal, Intent, MemoryEntry, MemoryReader } from '@athena-os/core';
 import {
   DeterministicCapabilityMatcher,
   DeterministicConstraintChecker,
@@ -7,6 +7,7 @@ import {
   type ReasoningBackend,
   type ReasoningBackendResult,
 } from '@athena-os/reasoning';
+import { DeterministicRetriever, type RetrievalRequest } from '@athena-os/memory';
 import type { ModelClient, ModelExtractionContext } from './modelClient.js';
 
 /**
@@ -29,23 +30,35 @@ export class LlmReasoningBackend implements ReasoningBackend {
   private readonly constraintChecker = new DeterministicConstraintChecker();
   private readonly capabilityMatcher = new DeterministicCapabilityMatcher();
   private readonly planBuilder = new DeterministicPlanBuilder();
+  private readonly retriever = new DeterministicRetriever();
+
+  /** Optional Memory handoff (RFC-0013 §The Contract); set by the engine. */
+  memory?: MemoryReader;
 
   constructor(private readonly modelClient: ModelClient) {
     this.id = `llm:${modelClient.id}`;
   }
 
   reason(intent: Intent, registry: CapabilityRegistry): ReasoningBackendResult {
-    const { goals, clarification } = this.goalsFor(intent, this.extractionContext(registry));
+    const context = this.extractionContext(registry);
+    const { goals, clarification } = this.goalsFor(intent, context);
+    const retrieved: readonly MemoryEntry[] = context.memory ?? [];
+
     if (goals.length === 0) {
       return {
         kind: 'clarificationRequired',
         reason: clarification ?? 'intent carries no extractable goals',
+        ...(retrieved.length > 0 ? { retrievedMemory: retrieved } : {}),
       };
     }
 
     const { accepted, rejected } = this.constraintChecker.checkGoals(goals, intent.constraints);
     if (rejected.length > 0) {
-      return { kind: 'rejected', reasons: rejected.map((reason) => reason.reason) };
+      return {
+        kind: 'rejected',
+        reasons: rejected.map((reason) => reason.reason),
+        ...(retrieved.length > 0 ? { retrievedMemory: retrieved } : {}),
+      };
     }
 
     const { goals: matchedGoals, unmatched } = this.capabilityMatcher.matchGoals(
@@ -56,6 +69,7 @@ export class LlmReasoningBackend implements ReasoningBackend {
       return {
         kind: 'clarificationRequired',
         reason: `no capability for goals: ${unmatched.map((goal) => goal.goal.kind).join(', ')}`,
+        ...(retrieved.length > 0 ? { retrievedMemory: retrieved } : {}),
       };
     }
 
@@ -64,6 +78,7 @@ export class LlmReasoningBackend implements ReasoningBackend {
       return {
         kind: 'clarificationRequired',
         reason: `no capability for goals: ${unresolved.map((goal) => goal.goal.kind).join(', ')}`,
+        ...(retrieved.length > 0 ? { retrievedMemory: retrieved } : {}),
       };
     }
 
@@ -75,18 +90,25 @@ export class LlmReasoningBackend implements ReasoningBackend {
       })),
     });
 
-    return { kind: 'executionPlan', plan, goals };
+    return {
+      kind: 'executionPlan',
+      plan,
+      goals,
+      ...(retrieved.length > 0 ? { retrievedMemory: retrieved } : {}),
+    };
   }
 
   /**
    * Derive the registry-aware extraction context: the exact goal kinds the
    * active registry can satisfy plus a capability reference, so the model
-   * maps intent onto real capabilities instead of a fixed vocabulary.
+   * maps intent onto real capabilities instead of a fixed vocabulary. When a
+   * `MemoryReader` was handed off, prior facts/preferences are retrieved and
+   * included so the model reasons with remembered context (RFC-0013/0014).
    */
   private extractionContext(registry: CapabilityRegistry): ModelExtractionContext {
     const caps = registry.capabilities();
     const availableGoalKinds = Array.from(new Set(caps.flatMap((cap) => cap.goalKinds)));
-    return {
+    const context: ModelExtractionContext = {
       availableGoalKinds,
       capabilities: caps.map((cap) => ({
         id: cap.id,
@@ -94,6 +116,13 @@ export class LlmReasoningBackend implements ReasoningBackend {
         goalKinds: cap.goalKinds,
       })),
     };
+
+    if (this.memory) {
+      const request: RetrievalRequest = { intentKind: '', requested: [] };
+      context.memory = this.retriever.retrieve(request, this.memory).entries;
+    }
+
+    return context;
   }
 
   private goalsFor(intent: Intent, context?: ModelExtractionContext): { goals: Goal[]; clarification?: string } {

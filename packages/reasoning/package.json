@@ -25,7 +25,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@athena-os/core": "workspace:*"
+    "@athena-os/core": "workspace:*",
+    "@athena-os/memory": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "catalog:",

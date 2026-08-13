@@ -1,4 +1,4 @@
-import type { Intent } from '@athena-os/core';
+import type { Intent, MemoryEntry } from '@athena-os/core';
 
 /**
  * RFC-0012 #port: how a model talks to an LLM ReasoningBackend.
@@ -42,6 +42,12 @@ export interface ModelExtractionContext {
     description: string;
     goalKinds: string[];
   }>;
+  /**
+   * Prior memory retrieved for this intent (facts/preferences/experiences),
+   * RFC-0013/0014. When present, the model should reason with this context —
+   * e.g. honor a known preference rather than asking again.
+   */
+  memory?: readonly MemoryEntry[];
 }
 
 export interface ModelClient {

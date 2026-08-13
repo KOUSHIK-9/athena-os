@@ -4,6 +4,8 @@ import type {
   ExecutionPlan,
   Goal,
   Intent,
+  MemoryEntry,
+  MemoryReader,
   SimulationEnvironment,
 } from '@athena-os/core';
 import type { ReasoningBackend } from './backend.js';
@@ -24,15 +26,23 @@ export type ReasoningResult =
       simulation: PlanSimulationResult;
       executionGraph: ExecutionGraph;
       goals?: Goal[];
+      retrievedMemory?: readonly MemoryEntry[];
     }
-  | { kind: 'clarificationRequired'; reason: string }
-  | { kind: 'rejected'; reasons: string[] };
+  | { kind: 'clarificationRequired'; reason: string; retrievedMemory?: readonly MemoryEntry[] }
+  | { kind: 'rejected'; reasons: string[]; retrievedMemory?: readonly MemoryEntry[] };
 
 export interface EngineComponents {
   backend: ReasoningBackend;
   planValidator: PlanValidator;
   simulator: DeterministicSimulator;
   executionGraphBuilder: ExecutionGraphBuilder;
+  /**
+   * Optional Memory handoff (RFC-0013 §The Contract). When present, the
+   * engine sets it on the backend before `reason` so the backend can retrieve
+   * prior facts/preferences. The `reason(intent, environment)` signature is
+   * unchanged.
+   */
+  memory?: MemoryReader;
 }
 
 /**
@@ -54,6 +64,10 @@ export class ReasoningEngine {
   reason(intent: Intent, environment: SimulationEnvironment = EMPTY_ENVIRONMENT): ReasoningResult {
     const { backend, planValidator, simulator, executionGraphBuilder } = this.components;
 
+    if (this.components.memory) {
+      backend.memory = this.components.memory;
+    }
+
     const candidate = backend.reason(intent, this.registry);
     if (candidate.kind !== 'executionPlan') {
       return candidate;
@@ -64,6 +78,7 @@ export class ReasoningEngine {
       return {
         kind: 'rejected',
         reasons: validation.errors.map((error) => error.message),
+        ...(candidate.retrievedMemory ? { retrievedMemory: candidate.retrievedMemory } : {}),
       };
     }
 
@@ -79,6 +94,9 @@ export class ReasoningEngine {
       // on the intent for downstream execution (action mapping needs the concrete
       // targets). Optional: deterministic/other backends may omit it.
       ...(candidate.goals ? { goals: candidate.goals } : {}),
+      // Carry retrieved memory forward so the run layer can surface what context
+      // informed this reasoning (RFC-0013: memory → context → backend).
+      ...(candidate.retrievedMemory ? { retrievedMemory: candidate.retrievedMemory } : {}),
     };
   }
 }

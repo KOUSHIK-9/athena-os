@@ -1,4 +1,5 @@
-import type { CapabilityRegistry, Intent } from '@athena-os/core';
+import type { CapabilityRegistry, Intent, MemoryEntry, MemoryReader } from '@athena-os/core';
+import { DeterministicRetriever, type RetrievalRequest } from '@athena-os/memory';
 import type { ReasoningBackend, ReasoningBackendResult } from './backend.js';
 import {
   DeterministicCapabilityMatcher,
@@ -30,16 +31,23 @@ export class DeterministicReasoningBackend implements ReasoningBackend {
   private readonly constraintChecker: ConstraintChecker = new DeterministicConstraintChecker();
   private readonly capabilityMatcher: CapabilityMatcher = new DeterministicCapabilityMatcher();
   private readonly planBuilder: PlanBuilder = new DeterministicPlanBuilder();
+  private readonly retriever = new DeterministicRetriever();
+
+  memory?: MemoryReader;
 
   reason(intent: Intent, registry: CapabilityRegistry): ReasoningBackendResult {
+    const retrieved = this.retrieveMemory(intent);
+    const withMemory = <T extends ReasoningBackendResult>(result: T): T =>
+      retrieved.length > 0 ? { ...result, retrievedMemory: retrieved } : result;
+
     const goals = this.goalExtractor.extractGoals(intent);
     if (goals.length === 0) {
-      return { kind: 'clarificationRequired', reason: 'intent carries no extractable goals' };
+      return withMemory({ kind: 'clarificationRequired', reason: 'intent carries no extractable goals' });
     }
 
     const { accepted, rejected } = this.constraintChecker.checkGoals(goals, intent.constraints);
     if (rejected.length > 0) {
-      return { kind: 'rejected', reasons: rejected.map((reason) => reason.reason) };
+      return withMemory({ kind: 'rejected', reasons: rejected.map((reason) => reason.reason) });
     }
 
     const { goals: matchedGoals, unmatched } = this.capabilityMatcher.matchGoals(
@@ -47,18 +55,18 @@ export class DeterministicReasoningBackend implements ReasoningBackend {
       registry
     );
     if (unmatched.length > 0) {
-      return {
+      return withMemory({
         kind: 'clarificationRequired',
         reason: `no capability for goals: ${unmatched.map((goal) => goal.goal.kind).join(', ')}`,
-      };
+      });
     }
 
     const { selections, unresolved } = selectCapabilities({ goals: matchedGoals, unmatched });
     if (unresolved.length > 0) {
-      return {
+      return withMemory({
         kind: 'clarificationRequired',
         reason: `no capability for goals: ${unresolved.map((goal) => goal.goal.kind).join(', ')}`,
-      };
+      });
     }
 
     const plan = this.planBuilder.buildPlan({
@@ -69,6 +77,20 @@ export class DeterministicReasoningBackend implements ReasoningBackend {
       })),
     });
 
-    return { kind: 'executionPlan', plan };
+    return withMemory({ kind: 'executionPlan', plan });
+  }
+
+  /**
+   * RFC-0014 read path: if a `MemoryReader` was handed off, retrieve prior
+   * facts/preferences/experiences relevant to this intent. Returns the empty
+   * array when no memory is wired, so callers can spread it unconditionally.
+   */
+  private retrieveMemory(intent: Intent): readonly MemoryEntry[] {
+    if (!this.memory) return [];
+    const request: RetrievalRequest = {
+      intentKind: intent.text ?? intent.id,
+      requested: [],
+    };
+    return this.retriever.retrieve(request, this.memory).entries;
   }
 }

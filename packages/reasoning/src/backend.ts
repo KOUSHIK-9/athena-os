@@ -1,4 +1,11 @@
-import type { CapabilityRegistry, ExecutionPlan, Goal, Intent } from '@athena-os/core';
+import type {
+  CapabilityRegistry,
+  ExecutionPlan,
+  Goal,
+  Intent,
+  MemoryEntry,
+  MemoryReader,
+} from '@athena-os/core';
 
 /**
  * RFC-0012 Reasoning Backend contract.
@@ -31,11 +38,18 @@ import type { CapabilityRegistry, ExecutionPlan, Goal, Intent } from '@athena-os
  * changing the rest of the engine (RFC-0012 §Contract).
  */
 export type ReasoningBackendResult =
-  | { kind: 'executionPlan'; plan: ExecutionPlan; goals?: Goal[] }
-  | { kind: 'clarificationRequired'; reason: string }
-  | { kind: 'rejected'; reasons: string[] };
+  | { kind: 'executionPlan'; plan: ExecutionPlan; goals?: Goal[]; retrievedMemory?: readonly MemoryEntry[] }
+  | { kind: 'clarificationRequired'; reason: string; retrievedMemory?: readonly MemoryEntry[] }
+  | { kind: 'rejected'; reasons: string[]; retrievedMemory?: readonly MemoryEntry[] };
 
 export interface ReasoningBackend {
   readonly id: string;
+  /**
+   * Optional read-only Memory handoff (RFC-0013 §The Contract). The engine
+   * sets this before calling `reason`; the backend reads it to retrieve prior
+   * facts/preferences/experiences. `reason(intent, registry)` is unchanged —
+   * memory is delivered entirely out-of-band through this property.
+   */
+  memory?: MemoryReader;
   reason(intent: Intent, registry: CapabilityRegistry): ReasoningBackendResult;
 }

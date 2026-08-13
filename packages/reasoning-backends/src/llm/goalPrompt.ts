@@ -127,6 +127,18 @@ export function goalExtractionInstructions(context?: ModelExtractionContext): st
     lines.push('', ...STATIC_ALLOWED_KINDS);
   }
 
+  const memory = context?.memory;
+  if (memory && memory.length > 0) {
+    lines.push(
+      '',
+      'Memory context — prior facts and preferences remembered from earlier sessions. Honor them',
+      'when they apply to this intent instead of asking the user again:'
+    );
+    for (const entry of memory) {
+      lines.push(`  - [${entry.kind}] ${entry.subject}: ${JSON.stringify(entry.payload)}`);
+    }
+  }
+
   return lines.join('\n');
 }
 

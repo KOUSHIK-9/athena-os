@@ -1,7 +1,8 @@
 # RFC-0014: Memory Retrieval
 
 - Status: **Accepted**
-- Reference Implementation: pending — implements only after the Memory stack
+- Reference Implementation: **implemented** — `packages/memory` (`DeterministicRetriever`)
+  and surfaced in reasoning output via `RetrievalResult` → `ReasoningBackendResult.retrievedMemory`.
   (RFC-0014/0015/0016) is accepted and reviewed.
 - Authors: Athena Core Team
 - Created: 2026-08-07

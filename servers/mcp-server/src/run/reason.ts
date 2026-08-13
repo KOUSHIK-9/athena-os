@@ -1,4 +1,4 @@
-import type { Intent, SimulationEnvironment } from '@athena-os/core';
+import type { Intent, MemoryReader, SimulationEnvironment } from '@athena-os/core';
 import {
   DeterministicExecutionGraphBuilder,
   DeterministicGoalExtractor,
@@ -139,6 +139,8 @@ export interface ReasonOptions {
   environment?: SimulationEnvironment;
   /** Observation from a failed attempt, when re-planning. */
   observation?: ObservationContext;
+  /** Optional Memory handoff (RFC-0013 §The Contract): prior facts/preferences. */
+  memory?: MemoryReader;
 }
 
 export interface RunReasoning {
@@ -214,6 +216,7 @@ export function reasonForRun(prompt: string, options: ReasonOptions = {}): RunRe
     planValidator: new DeterministicPlanValidator(),
     simulator: new DeterministicSimulator(),
     executionGraphBuilder: new DeterministicExecutionGraphBuilder(),
+    ...(options.memory ? { memory: options.memory } : {}),
   });
 
   let result;
@@ -235,6 +238,7 @@ export function reasonForRun(prompt: string, options: ReasonOptions = {}): RunRe
         planValidator: new DeterministicPlanValidator(),
         simulator: new DeterministicSimulator(),
         executionGraphBuilder: new DeterministicExecutionGraphBuilder(),
+        ...(options.memory ? { memory: options.memory } : {}),
       });
       return finalizeReason(detIntent, det.id, detEngine.reason(detIntent, options.environment), prompt);
     }

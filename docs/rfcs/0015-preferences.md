@@ -1,8 +1,8 @@
 # RFC-0015: Preferences
 
 - Status: **Accepted**
-- Reference Implementation: pending — part of the deterministic Memory stack
-  (RFC-0013 / RFC-0014), implemented after this RFC is Accepted.
+- Reference Implementation: **implemented** — `preference` MemoryEntry kind flows
+  through `DeterministicRetriever` (always-eligible set) into `ReasoningBackendResult.retrievedMemory`.
 - Authors: Athena Core Team
 - Created: 2026-08-13
 - Depends on: RFC-0005 (Intent Model), RFC-0007 (Constraint Governance Model),

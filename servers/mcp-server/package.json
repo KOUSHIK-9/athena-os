@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "@athena-os/iphone-agent": "workspace:*",
+    "@athena-os/memory": "workspace:*",
     "@athena-os/reasoning": "workspace:*",
     "@athena-os/reasoning-backends": "workspace:*",
     "@athena-os/sdk": "workspace:*",

@@ -1,7 +1,9 @@
 # RFC-0013: The Memory Model
 
 - Status: **Accepted**
-- Reference Implementation: pending — the Memory stack implements after
+- Reference Implementation: **implemented** — `packages/memory` (store + retriever)
+  and the read handoff into `packages/reasoning` (`ReasoningBackend.memory`); wired
+  through `servers/mcp-server/src/run/reason.ts`.
   RFC-0014/0015/0016 are accepted (see the closing discipline note).
 - Authors: Athena Core Team
 - Created: 2026-08-07

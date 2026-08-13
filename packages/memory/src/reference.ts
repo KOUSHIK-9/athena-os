@@ -35,8 +35,9 @@ export class DeterministicRetriever implements MemoryRetriever {
       selected = all.filter((e) => ALWAYS_ELIGIBLE.has(e.kind));
     }
 
-    if (request.at) {
-      selected = selected.filter((e) => e.recordedAt <= request.at);
+    const at = request.at;
+    if (at) {
+      selected = selected.filter((e) => e.recordedAt <= at);
     }
 
     const ordered = [...selected].sort((a, b) => {
