@@ -1,5 +1,5 @@
 import type { Intent } from '@athena-os/core';
-import type { ModelClient, ModelExtraction } from './modelClient.js';
+import type { ModelClient, ModelExtraction, ModelExtractionContext } from './modelClient.js';
 
 /**
  * In-repo stand-in for a live model, so the whole conformancesuite runs
@@ -12,7 +12,7 @@ import type { ModelClient, ModelExtraction } from './modelClient.js';
 export class StubModelClient implements ModelClient {
   readonly id = 'stub';
 
-  extractGoals(intent: Intent): ModelExtraction {
+  extractGoals(intent: Intent, _context?: ModelExtractionContext): ModelExtraction {
     const text = (intent.text ?? '').trim();
     if (text.length === 0) {
       return { goals: [], clarification: 'intent carries no text to interpret' };

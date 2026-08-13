@@ -7,7 +7,7 @@ import {
   type ReasoningBackend,
   type ReasoningBackendResult,
 } from '@athena-os/reasoning';
-import type { ModelClient } from './modelClient.js';
+import type { ModelClient, ModelExtractionContext } from './modelClient.js';
 
 /**
  * RFC-0012 first model-backed backend.
@@ -35,7 +35,7 @@ export class LlmReasoningBackend implements ReasoningBackend {
   }
 
   reason(intent: Intent, registry: CapabilityRegistry): ReasoningBackendResult {
-    const { goals, clarification } = this.goalsFor(intent);
+    const { goals, clarification } = this.goalsFor(intent, this.extractionContext(registry));
     if (goals.length === 0) {
       return {
         kind: 'clarificationRequired',
@@ -78,7 +78,25 @@ export class LlmReasoningBackend implements ReasoningBackend {
     return { kind: 'executionPlan', plan, goals };
   }
 
-  private goalsFor(intent: Intent): { goals: Goal[]; clarification?: string } {
+  /**
+   * Derive the registry-aware extraction context: the exact goal kinds the
+   * active registry can satisfy plus a capability reference, so the model
+   * maps intent onto real capabilities instead of a fixed vocabulary.
+   */
+  private extractionContext(registry: CapabilityRegistry): ModelExtractionContext {
+    const caps = registry.capabilities();
+    const availableGoalKinds = Array.from(new Set(caps.flatMap((cap) => cap.goalKinds)));
+    return {
+      availableGoalKinds,
+      capabilities: caps.map((cap) => ({
+        id: cap.id,
+        description: cap.description,
+        goalKinds: cap.goalKinds,
+      })),
+    };
+  }
+
+  private goalsFor(intent: Intent, context?: ModelExtractionContext): { goals: Goal[]; clarification?: string } {
     const structured = intent.goals.filter(
       (goal) => goal.kind.length > 0 && goal.description.length > 0
     );
@@ -86,7 +104,7 @@ export class LlmReasoningBackend implements ReasoningBackend {
       return { goals: structured };
     }
 
-    const extraction = this.modelClient.extractGoals(intent);
+    const extraction = this.modelClient.extractGoals(intent, context);
     if (extraction.goals.length === 0) {
       return { goals: [], clarification: extraction.clarification };
     }

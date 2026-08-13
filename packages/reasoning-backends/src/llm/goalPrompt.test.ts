@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { Intent } from '@athena-os/core';
-import { PROHIBITED_GOAL_KINDS, SYSTEM_PROMPT, parseGoalsJson } from './goalPrompt.js';
+import {
+  PROHIBITED_GOAL_KINDS,
+  SYSTEM_PROMPT,
+  filterGoalsToContext,
+  goalExtractionInstructions,
+  parseGoalsJson,
+} from './goalPrompt.js';
+import type { ModelExtractionContext } from './modelClient.js';
 
 const INTENT: Intent = {
   id: 'i-1',
@@ -70,5 +77,53 @@ describe('Apple planner contract (goalPrompt)', () => {
     for (const goal of extraction.goals) {
       expect(PROHIBITED_GOAL_KINDS.has(goal.kind.toLowerCase())).toBe(false);
     }
+  });
+
+  it('registry-aware instructions inject only the available goal kinds + capability reference', () => {
+    const ctx: ModelExtractionContext = {
+      availableGoalKinds: ['searchFlights', 'bookHotel'],
+      capabilities: [
+        { id: 'flights-search', description: 'Search flight itineraries', goalKinds: ['searchFlights'] },
+        { id: 'hotels-search', description: 'Find hotel options', goalKinds: ['bookHotel'] },
+      ],
+    };
+    const instructions = goalExtractionInstructions(ctx);
+    expect(instructions).toContain('searchFlights');
+    expect(instructions).toContain('bookHotel');
+    expect(instructions).toContain('Search flight itineraries');
+    expect(instructions).toContain('Find hotel options');
+    expect(instructions).toContain('Prefer the highest-level capability');
+    // The static fallback vocabulary must not leak in.
+    expect(instructions).not.toContain('openApp": launch');
+  });
+
+  it('filterGoalsToContext keeps only registry-supported kinds', () => {
+    const ctx: ModelExtractionContext = { availableGoalKinds: ['searchFlights'] };
+    const goals = filterGoalsToContext(
+      [
+        { kind: 'searchFlights', description: 'Search flights' },
+        { kind: 'tap', description: 'Tap result' },
+        { kind: 'type', description: 'Type Tokyo' },
+      ],
+      ctx
+    );
+    expect(goals.map((g) => g.kind)).toEqual(['searchFlights']);
+  });
+
+  it('filterGoalsToContext is a no-op without a context', () => {
+    const goals = filterGoalsToContext([
+      { kind: 'openApp', description: 'Open "Settings"' },
+      { kind: 'tap', description: 'Tap X' },
+    ]);
+    expect(goals).toHaveLength(2);
+  });
+
+  it('parses JSON wrapped in a fenced block with surrounding prose', () => {
+    const content =
+      'Here is the extraction:\n```json\n' +
+      JSON.stringify({ goals: [{ kind: 'searchFlights', description: 'Search flights' }] }) +
+      '\n```\nLet me know if you need anything else.';
+    const extraction = parseGoalsJson(content, INTENT);
+    expect(extraction.goals.map((g) => g.kind)).toEqual(['searchFlights']);
   });
 });

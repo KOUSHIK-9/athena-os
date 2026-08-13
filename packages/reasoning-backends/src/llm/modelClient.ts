@@ -25,8 +25,27 @@ export interface ModelExtraction {
   clarification?: string;
 }
 
+/**
+ * Structured context handed to a model at extraction time. Registry-aware
+ * extraction injects the exact goal kinds the active `CapabilityRegistry`
+ * can satisfy plus a human-readable capability reference, so the model maps
+ * the user's intent onto real capabilities instead of guessing from a fixed
+ * vocabulary. This never changes the downstream Athena pipeline — it only
+ * sharpens what the model is allowed to emit.
+ */
+export interface ModelExtractionContext {
+  /** Goal kinds the registry can satisfy (the only kinds worth emitting). */
+  availableGoalKinds?: readonly string[];
+  /** Capability descriptors for disambiguation (kind -> what it does). */
+  capabilities?: ReadonlyArray<{
+    id: string;
+    description: string;
+    goalKinds: string[];
+  }>;
+}
+
 export interface ModelClient {
   /** Stable identifier, e.g. 'stub', or a future 'gpt-5.5'. */
   readonly id: string;
-  extractGoals(intent: Intent): ModelExtraction;
+  extractGoals(intent: Intent, context?: ModelExtractionContext): ModelExtraction;
 }

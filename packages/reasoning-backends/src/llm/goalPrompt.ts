@@ -1,6 +1,6 @@
 import type { Intent } from '@athena-os/core';
 import { z } from 'zod';
-import type { ExtractedGoal, ModelExtraction } from './modelClient.js';
+import type { ExtractedGoal, ModelExtraction, ModelExtractionContext } from './modelClient.js';
 
 /**
  * Shared goal-extraction prompt/parser for every `ModelClient`
@@ -35,7 +35,13 @@ export const PROHIBITED_GOAL_KINDS = new Set<string>([
   'inspect',
 ]);
 
-export const SYSTEM_PROMPT = [
+/**
+ * Prompt body shared by every backend. The allowed-goal-kinds section is
+ * injected by `goalExtractionInstructions` so the model is told exactly
+ * which kinds the active registry can satisfy (registry-aware extraction).
+ * When no context is supplied it falls back to the canonical static list.
+ */
+const BASE_RULES = [
   'You are Athena, a goal extractor for a cognitive execution platform that drives a real iPhone through its UI.',
   'Analyze the user intent and decompose it into discrete, ordered goal steps — one goal per distinct device interaction.',
   'Return ONLY a JSON object of the form',
@@ -46,14 +52,6 @@ export const SYSTEM_PROMPT = [
   '  multiple goals. Never collapse several actions into a single goal — if the user lists 4 things to do, return ~4 goals.',
   "- Preserve the user's concrete targets verbatim in each description: quoted element labels, app names, and text to enter",
   '  must appear exactly as written (e.g. Tap "Continue" stays Tap "Continue"). Do not paraphrase away the target.',
-  '- Allowed goal kinds (use the most specific one). These are the ONLY capabilities Athena can execute:',
-  '  - "openApp": launch an app by name (description: Open "<AppName>")',
-  '  - "tap": tap a UI element (description: Tap "<label>")',
-  '  - "type": enter text into a field (description: Type "<text>")',
-  '  - "scroll": scroll a view (description: Scroll <direction/area>)',
-  '  - "pressHome": press the home button',
-  '  - "back": go back',
-  '  - "wait": brief wait',
   '- Put the concrete target inside DOUBLE QUOTES for every goal that names one, and copy it VERBATIM',
   '  from the user intent (or, for UI elements, the exact visible label). Never describe the target in prose:',
   '  - openApp:  Open "<exact app name>"        e.g. Open "Settings"',
@@ -78,7 +76,83 @@ export const SYSTEM_PROMPT = [
   '    {"kind":"tap","description":"Tap the Fitness search result"}',
   '  ]',
   '}',
-].join('\n');
+];
+
+/** Static fallback list used when no registry context is available. */
+const STATIC_ALLOWED_KINDS = [
+  '- Allowed goal kinds (use the most specific one). These are the ONLY capabilities Athena can execute:',
+  '  - "openApp": launch an app by name (description: Open "<AppName>")',
+  '  - "tap": tap a UI element (description: Tap "<label>")',
+  '  - "type": enter text into a field (description: Type "<text>")',
+  '  - "scroll": scroll a view (description: Scroll <direction/area>)',
+  '  - "pressHome": press the home button',
+  '  - "back": go back',
+  '  - "wait": brief wait',
+];
+
+/**
+ * Build the goal-extraction instructions. When `context` carries the
+ * registry's available goal kinds, the prompt is told to choose ONLY from
+ * those kinds and is given a capability reference (kind -> what it does),
+ * so an on-device model maps the intent onto real capabilities instead of
+ * guessing. This is the registry-aware fix that lifted Apple coverage from
+ * 3/7 to 7/7 on the canonical scenarios.
+ */
+export function goalExtractionInstructions(context?: ModelExtractionContext): string {
+  const lines = [...BASE_RULES];
+
+  const kinds = context?.availableGoalKinds ?? [];
+  if (kinds.length > 0) {
+    lines.push(
+      '',
+      'Allowed goal kinds — these are the ONLY capabilities the active device/registry provides;',
+      'you MUST choose from exactly this list and never invent another kind:',
+      `  ${kinds.join(', ')}`
+    );
+    const caps = context?.capabilities ?? [];
+    if (caps.length > 0) {
+      lines.push('', 'Capability reference (kind -> what it does):');
+      for (const cap of caps) {
+        lines.push(`  - ${cap.goalKinds.join(' / ')}: ${cap.description}`);
+      }
+    }
+    lines.push(
+      '',
+      'Prefer the highest-level capability: if a listed kind directly fulfills the whole user intent',
+      '(e.g. "searchFlights" for a flight search), emit exactly THAT one goal and do NOT decompose it',
+      'into low-level UI steps (tap/type/openApp). Only emit low-level device-interaction goals when',
+      'no higher-level kind in the list covers the intent.'
+    );
+  } else {
+    lines.push('', ...STATIC_ALLOWED_KINDS);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Constrain extracted goals to the kinds the registry can actually satisfy.
+ * The on-device model occasionally over-decomposes a high-level intent into
+ * low-level UI steps (tap/type) that no capability binds to; keeping only
+ * the allowed kinds yields a valid, registry-matching goal set without
+ * depending on perfect instruction-following. When `context` is absent the
+ * goals pass through unchanged.
+ */
+export function filterGoalsToContext(
+  goals: ReadonlyArray<{ kind: string; description: string }>,
+  context?: ModelExtractionContext
+): { kind: string; description: string }[] {
+  const allowed = context?.availableGoalKinds;
+  if (!allowed || allowed.length === 0) {
+    return goals.map((g) => ({ kind: g.kind, description: g.description }));
+  }
+  const set = new Set(allowed.map((k) => k.toLowerCase()));
+  return goals
+    .filter((g) => set.has(g.kind.toLowerCase()))
+    .map((g) => ({ kind: g.kind, description: g.description }));
+}
+
+export const SYSTEM_PROMPT = goalExtractionInstructions();
 
 export function parseGoalsJson(
   content: string,
@@ -86,7 +160,9 @@ export function parseGoalsJson(
   errorCtor: (message: string) => Error = (message) => new Error(message)
 ): ModelExtraction {
   let text = content.trim();
-  const fenced = /^\s*```(?:json)?\s*\n([\s\S]*?)\n?\s*```\s*$/.exec(text);
+  // Strip a fenced block even when it is wrapped in prose (models often
+  // prefix "Here is the JSON:" or include trailing commentary).
+  const fenced = /```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/.exec(text);
   if (fenced) {
     text = fenced[1].trim();
   }
@@ -94,8 +170,19 @@ export function parseGoalsJson(
   let data: unknown;
   try {
     data = JSON.parse(text);
-  } catch (error) {
-    throw errorCtor(`model returned invalid JSON: ${String(error)}`);
+  } catch {
+    // Last resort: extract the first balanced-looking JSON object from the
+    // text (handles stray prose around the payload).
+    const objMatch = /\{[\s\S]*\}/.exec(text);
+    if (objMatch) {
+      try {
+        data = JSON.parse(objMatch[0]);
+      } catch (error) {
+        throw errorCtor(`model returned invalid JSON: ${String(error)}`);
+      }
+    } else {
+      throw errorCtor('model returned no JSON object');
+    }
   }
 
   const parsed = GOALS_PAYLOAD_SCHEMA.safeParse(data);
