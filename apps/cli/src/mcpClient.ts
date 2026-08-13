@@ -40,7 +40,12 @@ export class AthenaMCPClient {
       throw new Error('Not connected to Athena MCP server. Call connect() first.');
     }
 
-    const result = (await this.client.callTool({ name, arguments: args })) as {
+    const timeoutMs = Number(process.env.ATHENA_MCP_TIMEOUT ?? 300000);
+    const result = (await this.client.callTool(
+      { name, arguments: args },
+      undefined,
+      { timeout: Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 300000 },
+    )) as {
       content: Array<{ type: string; text?: string }>;
     };
 
