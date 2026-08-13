@@ -1,5 +1,5 @@
 import type { iPhoneExecutor } from '@athena-os/iphone-agent';
-import { selectFromModel } from '@athena-os/understanding';
+import { selectFromModel, resolveElements } from '@athena-os/understanding';
 import type { Selector, SemanticModel } from '@athena-os/core';
 import type { Action, ExecutionPlan } from '@athena-os/core';
 import type { PlanSimulationResult } from '@athena-os/reasoning';
@@ -132,6 +132,22 @@ async function resolveTapSelector(
   const model = (treeResult as { metadata?: { model?: SemanticModel } }).metadata?.model;
   if (!model?.root) return undefined;
 
+  // Prefer resolving by the element's visible label. A text field that already
+  // contains typed input (e.g. after a preceding `type` step) carries that input
+  // in its `value`, which would otherwise be mistaken for its identifier (e.g.
+  // "Search" resolving to accessibilityId "Bluetooth"). Tapping by the label is
+  // stable regardless of transient field contents. This also keeps "Search"
+  // (the control) and "Bluetooth" (the query/result) unambiguous.
+  const matches = resolveElements(model, label);
+  for (const m of matches) {
+    if (
+      m.element.label &&
+      (m.match === 'exact' || m.match === 'caseInsensitive' || m.match === 'contains')
+    ) {
+      return { type: 'label', value: m.element.label };
+    }
+  }
+
   // First try the strict match (visible + enabled, like the live element).
   const strict = selectFromModel(model, label, { visibleOnly: true, enabledOnly: true });
   if (strict) return strict.selector;
@@ -224,6 +240,14 @@ async function buildObservation(
  * different step lists (different lengths, reorderings, new step ids), so we
  * match on *what the action does* — its capability plus the normalized target
  * it acts on — not on the positional index or the per-plan step id.
+ *
+ * Actionable steps (launchApp/tap/type) dedupe by capability + target, which is
+ * stable across re-plans regardless of how the planner re-phrased or reordered
+ * the step. Observation/control steps (wait, getTree, screenshot, pressHome,
+ * back, …) have no natural target, so they key by their position in the plan —
+ * distinct steps in one plan stay distinct, while a re-plan that keeps the same
+ * structure still dedups verified work without depending on the volatile
+ * stepId/goalId the re-plan regenerates.
  */
 function normalizeTarget(value: string): string {
   return value
@@ -233,7 +257,8 @@ function normalizeTarget(value: string): string {
 }
 
 function actionSignature(
-  item: Extract<PlanActionCollection['actions'][number], { ok: true }>
+  item: Extract<PlanActionCollection['actions'][number], { ok: true }>,
+  index: number
 ): string {
   const action = item.action;
   let target = '';
@@ -258,10 +283,10 @@ function actionSignature(
     return `${action.type}::${normalizeTarget(target)}`;
   }
 
-  // Observation/control steps (getTree, wait, screenshot, …) carry no stable
-  // target. Keep them distinct per plan step so separate observations aren't
-  // collapsed, but stable within a single plan via stepId.
-  return `${action.type}::${item.stepId ?? item.goalId ?? ''}`;
+  // Non-target actions: key by plan position so distinct steps in a single plan
+  // (e.g. ten separate `wait` steps) remain distinct, while a structurally
+  // similar re-plan still recognizes verified work.
+  return `${action.type}::${index}`;
 }
 
 /**
@@ -284,13 +309,20 @@ async function executeActions(
 }> {
   const executed: ExecutedStep[] = [];
   let nextIndex = opts.nextIndex;
+  // Snapshot the signatures already accomplished in *prior* attempts. Work that
+  // succeeds in this call is added back to `opts.succeededSignatures` so the
+  // NEXT attempt sees it, but we only skip against the snapshot — never against
+  // work done earlier in the same plan. That keeps genuinely repeated steps
+  // within a single plan from being collapsed, while still deduping verified
+  // work across recovery re-plans (which carry fresh step/goal ids).
+  const priorSignatures = new Set(opts.succeededSignatures);
 
   for (let index = 0; index < actions.length; index += 1) {
     const item = actions[index];
-    const signature = actionSignature(item);
+    const signature = actionSignature(item, index);
 
     // Already accomplished in a prior attempt — don't repeat verified work.
-    if (opts.succeededSignatures.has(signature)) continue;
+    if (priorSignatures.has(signature)) continue;
 
     let action = item.action;
 
@@ -320,7 +352,29 @@ async function executeActions(
       action = { ...action, selector } as Action;
     }
 
-    const outcome = await executor.execute(action);
+    // State-aware launch: if the target app is already the foreground app, the
+    // launch is a redundant no-op. Skipping it keeps the flow robust to starting
+    // states where the app is already open (e.g. a recovery re-plan that begins
+    // mid-flow) and avoids unnecessary re-execution / UI resets. Executors that
+    // cannot report the foreground app fall through to a normal launch.
+    let outcome: Awaited<ReturnType<typeof executor.execute>>;
+    if (action.type === 'launchApp' && typeof executor.getActiveApp === 'function') {
+      const active = await executor.getActiveApp().catch(() => undefined);
+      if (active && active.bundleId === action.bundleId) {
+        outcome = {
+          success: true,
+          action,
+          duration: 0,
+          timestamp: new Date(),
+          requestId: 'skip-already-foreground',
+          state: 'succeeded',
+        };
+      } else {
+        outcome = await executor.execute(action);
+      }
+    } else {
+      outcome = await executor.execute(action);
+    }
     const step: ExecutedStep = {
       stepIndex: nextIndex,
       goalId: item.goalId,
