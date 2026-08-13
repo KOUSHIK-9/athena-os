@@ -7,4 +7,5 @@ export * from './semantic.js';
 export * from './events.js';
 export * from './errors.js';
 export * from './contract.js';
+export * from './memory.js';
 export * from './protocol/index.js';
