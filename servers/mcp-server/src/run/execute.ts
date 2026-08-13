@@ -1,6 +1,6 @@
 import type { iPhoneExecutor } from '@athena-os/iphone-agent';
 import { selectFromModel, resolveElements } from '@athena-os/understanding';
-import type { Selector, SemanticModel } from '@athena-os/core';
+import type { MemoryStore, Selector, SemanticModel } from '@athena-os/core';
 import type { Action, ExecutionPlan } from '@athena-os/core';
 import type { PlanSimulationResult } from '@athena-os/reasoning';
 import type { ExecutionGraph } from '@athena-os/core';
@@ -13,6 +13,7 @@ import {
   type TaskMemoryStore,
   type TaskSnapshot,
 } from './memory.js';
+import { recordExperience, runDueTriggers } from './triggers.js';
 
 /**
  * Device-side runner for the `run` tool. Owns the only non-hermetic part of
@@ -38,7 +39,15 @@ export interface RunRequest {
   prompt: string;
   dryRun?: boolean;
   backend?: BackendPreference;
+  /** Per-run task memory (steps/verification). Distinct from persistent memory. */
   memoryStore?: TaskMemoryStore;
+  /**
+   * Persistent RFC-0013 Memory store (facts/preferences/experiences/triggers).
+   * When provided, due triggers fire before the main intent and a successful
+   * execution is written back as an `experience` entry. Opt-in: omitted runs
+   * are unaffected.
+   */
+  memory?: MemoryStore;
 }
 
 export interface ExecutedStep {
@@ -453,6 +462,17 @@ export async function runOnDevice(
   const backend = request.backend ?? 'auto';
   const reasonFn = injectedReasonForRun ?? reasonForRun;
 
+  // Fire any due triggers before the main intent (RFC-0016 §4). Evaluation is
+  // read-only; firing synthesizes intents that flow through the normal pipeline.
+  // Gated on a persistent memory store being supplied so existing runs are unaffected.
+  if (request.memory) {
+    await runDueTriggers(request.memory, {
+      reason: (p) =>
+        reasonFn(p, { backend, ...(request.memory ? { memory: request.memory } : {}) }),
+      now: new Date().toISOString(),
+    });
+  }
+
   // Persist the complete run in TaskMemory so the final state is recorded
   // (verified steps, failure point, recovery) independent of the executor.
   const memoryStore = request.memoryStore ?? new InMemoryTaskMemoryStore();
@@ -487,6 +507,7 @@ export async function runOnDevice(
     const { intent, backendId, result, originalPrompt } = reasonFn(prompt, {
       backend,
       observation,
+      ...(request.memory ? { memory: request.memory } : {}),
     });
 
     if (result.kind === 'clarificationRequired') {
@@ -582,6 +603,18 @@ export async function runOnDevice(
 
       if (verify.verified) {
         if (taskId) memory.complete(taskId);
+        // Session-scoped memory write-back (RFC-0013/0016): a verified-successful
+        // execution becomes an `experience` the next session can reason from. Only
+        // reached on verified success, so failures never pollute memory.
+        if (request.memory) {
+          recordExperience(request.memory, {
+            intent: originalIntent,
+            plan,
+            backendId,
+            success: true,
+            executedStepCount: allExecuted.length,
+          });
+        }
         return {
           success: true,
           kind: 'executed',
