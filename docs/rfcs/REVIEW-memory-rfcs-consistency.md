@@ -35,8 +35,8 @@ implementation in `packages/memory`, `packages/reasoning-backends`, and
   *not* the RFC-0005 §4 `Context`; it is the persistent portion merged into
   `Context` by the engine (`RetrievalResult`/`assembleContext`).
 - **C (package ownership):** model types live in `@athena-os/core`; the
-  retrieval *contract* + reference implementation live in `packages/memory`,
-  consistent with RFC-0013 §The Contract and RFC-0014 §6.
+  retrieval *contract* + reference implementation live in `packages/memory`.
+  This matches RFC-0013 §The Contract. It also matches RFC-0014 §6.
 - **E:** informational only; RFC-0015/0016 are now Accepted.
 
 `pnpm test:rfcs` passes; `scripts/architecture-check.mjs` passes.
