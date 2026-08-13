@@ -80,3 +80,14 @@ Per the Developer Preview finish line, the following are **not** part of this
 milestone: physical iPhone hardware track, Learning from outcomes, Multi-Agent
 coordination, advanced retrieval algorithms (embeddings/semantic search), and any
 revision of already-Accepted RFCs. Those remain deferred milestones.
+
+## Release hardening
+
+- Release notes: `MILESTONE-5-RELEASE.md`.
+- Live Apple-memory loop is wired as `pnpm --filter @athena-os/mcp-server
+  test:memory:live` (gated; requires a booted iPhone 17 Simulator + Apple
+  Intelligence).
+- Architecture gate (`pnpm test:architecture`) passes: dependency pyramid and
+  Appium boundary enforced.
+- Versioning uses changesets (`pnpm changeset`); no version bump or publish has
+  been performed for this preview yet.

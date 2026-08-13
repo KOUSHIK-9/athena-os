@@ -19,6 +19,7 @@
     "start": "node dist/index.js",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
+    "test:memory:live": "ATHENA_REAL_DEVICE=1 ATHENA_APPLE_MODEL=1 vitest run src/run/memory.appleScenarios.test.ts --testTimeout=240000",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
     "format": "prettier --write src --ignore-path ../../.prettierignore",
