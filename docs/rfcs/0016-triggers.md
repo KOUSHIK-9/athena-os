@@ -1,6 +1,6 @@
 # RFC-0016: Triggers
 
-- Status: **Accepted**
+- Status: **Accepted** (final — Developer Preview v1.0; frozen, no further changes pending)
 - Reference Implementation: **implemented** — `trigger` MemoryEntry kind is modeled
   in `packages/memory` and excluded from always-eligible retrieval (returned only
   when explicitly `requested`), per §2. Execution-side firing is implemented in

@@ -1,6 +1,6 @@
 # RFC-0015: Preferences
 
-- Status: **Accepted**
+- Status: **Accepted** (final — Developer Preview v1.0; frozen, no further changes pending)
 - Reference Implementation: **implemented** — `preference` MemoryEntry kind flows
   through `DeterministicRetriever` (always-eligible set) into `ReasoningBackendResult.retrievedMemory`.
 - Authors: Athena Core Team

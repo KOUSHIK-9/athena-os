@@ -311,11 +311,16 @@ eight findings were adopted as additive amendments — the four-type ontology,
 the authority boundary, and the lifecycle philosophy were unchanged.
 
 1. ✅ **RFC-0013 (this)** — model, lifecycles, authority. **Accepted.**
-2. **RFC-0014 — Memory Retrieval** — the retrieval contract and conformance.
-3. Architecture review.
-4. **RFC-0015 — Preferences**; **RFC-0016 — Triggers**.
-5. Cross-RFC consistency review.
-6. **Then implement**: deterministic in-memory reference → conformance →
+2. ✅ **RFC-0014 — Memory Retrieval** — Accepted; deterministic retriever implemented.
+3. ✅ Architecture review — passed (dependency pyramid + Appium boundary enforced).
+4. ✅ **RFC-0015 — Preferences**; **RFC-0016 — Triggers** — Accepted; implemented in
+   `packages/memory` and `servers/mcp-server/src/run/triggers.ts`.
+5. ✅ Cross-RFC consistency review — see `REVIEW-memory-rfcs-consistency.md` (resolved).
+6. ✅ Implemented: deterministic in-memory reference, retriever, preference + trigger
+   firing, experience write-back, and the Apple on-device memory loop — runtime-verified
+   on an iPhone 17 Simulator (Developer Preview v1.0).
+
+All four Memory RFCs (0013–0016) are **Accepted and frozen for Developer Preview v1.0**.
 
 ## Cross-References
 

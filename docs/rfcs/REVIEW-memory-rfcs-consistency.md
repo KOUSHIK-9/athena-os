@@ -22,6 +22,27 @@ exists in `scripts/` or `docs/`, so this is a manual review.
 
 ---
 
+## Resolution — Developer Preview v1.0
+
+All four Memory RFCs (0013–0016) are **Accepted and frozen for v1.0**. The
+implementation in `packages/memory`, `packages/reasoning-backends`, and
+`servers/mcp-server/src/run` resolves the findings above:
+
+- **A (integration seam):** resolved by the additive `memory?: MemoryReader`
+  handoff at the RFC-0012 backend seam (`reasonForRun`); `reason(intent,
+  registry)` is unchanged and the validator remains memory-blind.
+- **B / D (Context collision):** RFC-0014's retrieval result is explicitly
+  *not* the RFC-0005 §4 `Context`; it is the persistent portion merged into
+  `Context` by the engine (`RetrievalResult`/`assembleContext`).
+- **C (package ownership):** model types live in `@athena-os/core`; the
+  retrieval *contract* + reference implementation live in `packages/memory`,
+  consistent with RFC-0013 §The Contract and RFC-0014 §6.
+- **E:** informational only; RFC-0015/0016 are now Accepted.
+
+`pnpm test:rfcs` passes; `scripts/architecture-check.mjs` passes.
+
+---
+
 ## Summary (corrected)
 
 | # | Issue | Severity | Where |
