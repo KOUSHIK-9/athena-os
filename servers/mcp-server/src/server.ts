@@ -247,6 +247,12 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
+  /** Executor for standalone tools; auto-connects a device session when none is active. */
+  async function getOrConnectExecutor() {
+    await mcpSessionManager.ensureSession();
+    return mcpSessionManager.getExecutor();
+  }
+
   try {
     switch (name) {
       case 'doctor': {
@@ -307,7 +313,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case 'launchApp': {
         const params = LaunchAppParamsSchema.parse(args);
-        const executor = mcpSessionManager.getExecutor();
+        const executor = await getOrConnectExecutor();
         const target = params.bundleId ?? params.app;
         if (!target) {
           throw new Error('launchApp requires an app name or bundleId');
@@ -330,7 +336,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case 'tap': {
         const params = TapParamsSchema.parse(args);
-        const executor = mcpSessionManager.getExecutor();
+        const executor = await getOrConnectExecutor();
         const result = await executor.execute({
           type: 'tap',
           selector: params.selector,
@@ -343,7 +349,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case 'type': {
         const params = TypeParamsSchema.parse(args);
-        const executor = mcpSessionManager.getExecutor();
+        const executor = await getOrConnectExecutor();
         const result = await executor.execute({
           type: 'type',
           text: params.text,
@@ -357,7 +363,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case 'swipe': {
         const params = SwipeParamsSchema.parse(args);
-        const executor = mcpSessionManager.getExecutor();
+        const executor = await getOrConnectExecutor();
         const result = await executor.execute({
           type: 'swipe',
           selector: params.selector,
@@ -371,7 +377,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'screenshot': {
-        const executor = mcpSessionManager.getExecutor();
+        const executor = await getOrConnectExecutor();
         const result = await executor.execute({
           type: 'screenshot',
           description: 'Take screenshot',
@@ -382,7 +388,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'getTree': {
-        const executor = mcpSessionManager.getExecutor();
+        const executor = await getOrConnectExecutor();
         const result = await executor.execute({
           type: 'getTree',
           description: 'Get semantic UI model',
@@ -415,7 +421,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           throw new Error('find requires a label');
         }
 
-        const executor = mcpSessionManager.getExecutor();
+        const executor = await getOrConnectExecutor();
         const treeResult = await executor.execute({
           type: 'getTree',
           description: 'Gather semantic model for find',
@@ -470,7 +476,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'pressHome': {
-        const executor = mcpSessionManager.getExecutor();
+        const executor = await getOrConnectExecutor();
         const result = await executor.execute({
           type: 'pressHome',
           description: 'Press home button',
@@ -482,7 +488,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case 'terminateApp': {
         const params = TerminateAppParamsSchema.parse(args);
-        const executor = mcpSessionManager.getExecutor();
+        const executor = await getOrConnectExecutor();
         const result = await executor.execute({
           type: 'terminateApp',
           bundleId: params.bundleId,
@@ -495,7 +501,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case 'wait': {
         const params = WaitParamsSchema.parse(args);
-        const executor = mcpSessionManager.getExecutor();
+        const executor = await getOrConnectExecutor();
         const result = await executor.execute({
           type: 'wait',
           duration: params.duration,
@@ -507,7 +513,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       case 'back': {
-        const executor = mcpSessionManager.getExecutor();
+        const executor = await getOrConnectExecutor();
         const result = await executor.execute({ type: 'back', description: 'Go back' });
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],

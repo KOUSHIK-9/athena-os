@@ -51,6 +51,27 @@ export class MCPSessionManager {
     return { sessionId: udid, deviceUdid: udid };
   }
 
+  /**
+   * Ensure a device session exists, creating one (auto-selecting a device) when
+   * none is active. Lets standalone inspection/navigation tools (tree, find,
+   * tap, type, back, home, ...) work without a prior explicit connect — they
+   * were previously unreachable because only `run`/`connect` established a
+   * session. Idempotent when a session is already active.
+   */
+  async ensureSession(config: Partial<SessionConfig> = {}): Promise<void> {
+    if (this.currentSessionId && this.sessions.has(this.currentSessionId)) return;
+    await this.connect({
+      deviceUdid: '',
+      timeout: 30000,
+      retries: 3,
+      screenshotOnFailure: true,
+      screenshotDir: 'screenshots',
+      verifyAppState: true,
+      verifyAppLaunch: true,
+      ...config,
+    });
+  }
+
   getExecutor(udid?: string): iPhoneExecutor {
     const targetUdid = udid ?? this.currentSessionId;
     if (!targetUdid) {
