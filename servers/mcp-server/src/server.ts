@@ -6,6 +6,7 @@ import {
   ListResourcesRequestSchema,
   ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
+import { randomUUID } from 'node:crypto';
 import { createLogger } from '@athena-os/shared';
 import { mcpSessionManager } from './sessionManager.js';
 import {
@@ -17,13 +18,15 @@ import {
   TerminateAppParamsSchema,
   WaitParamsSchema,
   RunParamsSchema,
+  MemoryParamsSchema,
 } from './tools.js';
 import { runOnDevice } from './run/execute.js';
 import { verifyWDA } from '@athena-os/iphone-agent';
 import { discoverDevices } from '@athena-os/iphone-agent';
 import { resolveAppNameToBundleId } from '@athena-os/iphone-agent';
 import { renderSemanticTree, selectFromModel } from '@athena-os/understanding';
-import type { SemanticModel } from '@athena-os/core';
+import { FileMemoryStore } from '@athena-os/memory';
+import type { MemoryEntry, SemanticModel } from '@athena-os/core';
 
 const logger = createLogger('MCPServer');
 
@@ -234,6 +237,32 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           },
         },
         required: ['prompt'],
+      },
+    },
+    {
+      name: 'memory',
+      description:
+        'RFC-0013 memory store: record/list/clear facts, preferences, experiences and triggers that persist across runs and are retrieved during reasoning (and via triggers).',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          action: { type: 'string', enum: ['record', 'list', 'clear'] },
+          id: { type: 'string', description: 'Explicit entry id (optional; one is generated)' },
+          kind: {
+            type: 'string',
+            enum: ['fact', 'preference', 'experience', 'trigger'],
+            description: 'Entry kind (required for record)',
+          },
+          subject: {
+            type: 'string',
+            description: 'Canonical dotted identifier, e.g. "app.preferred" (required for record)',
+          },
+          payload: {
+            type: 'object',
+            description: 'Entry payload (object; for triggers use the RFC-0016 TriggerPayload shape)',
+          },
+        },
+        required: ['action'],
       },
     },
     {
@@ -522,13 +551,53 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case 'run': {
         const params = RunParamsSchema.parse(args);
+        // RFC-0013 persistent memory: load the on-disk store so this run can
+        // retrieve prior preferences/experiences/triggers and write back a new
+        // experience on verified success. Gated inside runOnDevice so runs without
+        // a store are unaffected.
+        const memory = new FileMemoryStore();
         const outcome = await runOnDevice({
           prompt: params.prompt,
           dryRun: params.dryRun,
           backend: params.backend,
+          memory,
         });
         return {
           content: [{ type: 'text', text: JSON.stringify(outcome, null, 2) }],
+        };
+      }
+
+      case 'memory': {
+        const params = MemoryParamsSchema.parse(args);
+        const store = new FileMemoryStore();
+        if (params.action === 'record') {
+          if (!params.kind || !params.subject) {
+            throw new Error('record requires kind and subject');
+          }
+          const entry: MemoryEntry = {
+            id: params.id ?? randomUUID(),
+            kind: params.kind,
+            subject: params.subject,
+            recordedAt: new Date().toISOString(),
+            payload: params.payload ?? {},
+          };
+          store.record(entry);
+          return {
+            content: [{ type: 'text', text: JSON.stringify({ success: true, entry }, null, 2) }],
+          };
+        }
+        if (params.action === 'list') {
+          const entries = store.entries();
+          return {
+            content: [
+              { type: 'text', text: JSON.stringify({ success: true, count: entries.length, entries }, null, 2) },
+            ],
+          };
+        }
+        // clear
+        store.clear();
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ success: true, cleared: true }, null, 2) }],
         };
       }
 

@@ -634,6 +634,15 @@ program
         });
       }
 
+      const retrieved = result.retrievedMemory as
+        | Array<{ kind: string; subject: string }>
+        | undefined;
+      if (retrieved && retrieved.length > 0) {
+        console.log(
+          chalk.gray(`  🧠 ${retrieved.length} memory entr(y/ies) retrieved into reasoning context`)
+        );
+      }
+
       if (cmd.dryRun) {
         console.log(chalk.green(`\n✓ Plan ready — ${plan?.steps?.length ?? 0} step(s). `));
         console.log(chalk.gray('  (dry run: device not touched. Drop --dry-run to execute.)'));
@@ -695,6 +704,72 @@ program
       }
     } catch (error) {
       spinner.fail('Disconnect failed');
+      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+      process.exit(1);
+    }
+  });
+
+const memoryCmd = program
+  .command('memory')
+  .description('RFC-0013 memory store: record/list/clear preferences, experiences and triggers');
+
+memoryCmd
+  .command('record')
+  .description('Record a memory entry (preference, fact, experience, or trigger)')
+  .requiredOption('--kind <kind>', 'Entry kind: fact | preference | experience | trigger')
+  .requiredOption('--subject <subject>', 'Canonical dotted identifier, e.g. app.preferred')
+  .option('--payload <json>', 'JSON payload string (object)', '{}')
+  .option('--id <id>', 'Explicit entry id (optional)')
+  .action(async (opts: { kind: string; subject: string; payload: string; id?: string }) => {
+    const spinner = ora(`Recording memory (${opts.kind})...`).start();
+    try {
+      const payload = JSON.parse(opts.payload);
+      const result = await withClient('memory', (client) =>
+        client.callTool('memory', {
+          action: 'record',
+          id: opts.id,
+          kind: opts.kind,
+          subject: opts.subject,
+          payload,
+        })
+      );
+      if (!result.success) throw new Error(result.error ?? 'memory record failed');
+      spinner.succeed(chalk.green(`Recorded ${opts.kind} → ${opts.subject}`));
+    } catch (error) {
+      spinner.fail('Memory record failed');
+      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+      process.exit(1);
+    }
+  });
+
+memoryCmd
+  .command('list')
+  .description('List all memory entries')
+  .action(async () => {
+    const result = await withClient('memory', (client) => client.callTool('memory', { action: 'list' }));
+    if (!result.success) {
+      console.error(chalk.red(result.error ?? 'memory list failed'));
+      process.exit(1);
+    }
+    const entries = (result.entries as unknown[]) ?? [];
+    console.log(chalk.bold(`\n🧠 Memory (${entries.length} entries)\n`));
+    for (const entry of entries) {
+      console.log(chalk.gray(JSON.stringify(entry)));
+    }
+    console.log('');
+  });
+
+memoryCmd
+  .command('clear')
+  .description('Clear all memory entries')
+  .action(async () => {
+    const spinner = ora('Clearing memory...').start();
+    try {
+      const result = await withClient('memory', (client) => client.callTool('memory', { action: 'clear' }));
+      if (!result.success) throw new Error(result.error ?? 'memory clear failed');
+      spinner.succeed(chalk.green('Memory cleared'));
+    } catch (error) {
+      spinner.fail('Memory clear failed');
       console.error(chalk.red(error instanceof Error ? error.message : String(error)));
       process.exit(1);
     }

@@ -1,6 +1,6 @@
 import type { iPhoneExecutor } from '@athena-os/iphone-agent';
 import { selectFromModel, resolveElements } from '@athena-os/understanding';
-import type { MemoryStore, Selector, SemanticModel } from '@athena-os/core';
+import type { MemoryEntry, MemoryStore, Selector, SemanticModel } from '@athena-os/core';
 import type { Action, ExecutionPlan } from '@athena-os/core';
 import type { PlanSimulationResult } from '@athena-os/reasoning';
 import type { ExecutionGraph } from '@athena-os/core';
@@ -95,6 +95,7 @@ export type RunOutcome =
       simulation: PlanSimulationResult;
       executionGraph: ExecutionGraph;
       actions: PlanActionCollection['actions'];
+      retrievedMemory?: readonly MemoryEntry[];
     }
   | {
       success: true;
@@ -105,6 +106,7 @@ export type RunOutcome =
       executionGraph: ExecutionGraph;
       executed: ExecutedStep[];
       attempts: number;
+      retrievedMemory?: readonly MemoryEntry[];
       memory?: TaskSnapshot;
     };
 
@@ -554,6 +556,7 @@ export async function runOnDevice(
         simulation,
         executionGraph,
         actions,
+        retrievedMemory: result.retrievedMemory,
       };
     }
 
@@ -624,6 +627,7 @@ export async function runOnDevice(
           executionGraph,
           executed: allExecuted,
           attempts: attempt + 1,
+          retrievedMemory: result.retrievedMemory,
           memory: taskId ? memory.getSnapshot(taskId) : undefined,
         };
       }

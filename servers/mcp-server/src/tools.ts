@@ -48,4 +48,12 @@ export const RunParamsSchema = z.object({
   backend: z.enum(['auto', 'deterministic', 'llm', 'apple']).optional().default('auto'),
 });
 
+export const MemoryParamsSchema = z.object({
+  action: z.enum(['record', 'list', 'clear']),
+  id: z.string().optional(),
+  kind: z.enum(['fact', 'preference', 'experience', 'trigger']).optional(),
+  subject: z.string().optional(),
+  payload: z.unknown().optional(),
+});
+
 export const DisconnectParamsSchema = z.object({});
