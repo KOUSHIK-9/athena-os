@@ -10,6 +10,7 @@ import {
   type ReasoningResult,
 } from '@athena-os/reasoning';
 import {
+  AppleBridgeError,
   AppleModelClient,
   AppleModelUnavailableError,
   appleModelConfigFromEnv,
@@ -197,11 +198,17 @@ export function reasonForRun(prompt: string, options: ReasonOptions = {}): RunRe
   // drives the on-device FoundationModels bridge, to produce its goals. Pre-filling
   // intent.goals with the deterministic extractor would short-circuit
   // LlmReasoningBackend.goalsFor (it returns pre-populated goals verbatim) and the
-  // Apple model would never be consulted — a silent deterministic bypass. So for
-  // backend=apple we hand the model an intent with empty goals and let it extract.
-  // Every other backend keeps the deterministic pre-fill (the historical default).
+  // Apple model would never be consulted — a silent deterministic bypass.
+  //
+  // `auto` ALSO consults the Apple model: the documented behavior is "auto prefers
+  // the on-device Apple backend, falling back to deterministic automatically when
+  // Apple Intelligence is unavailable" (reason.ts fallback). Pre-filling for `auto`
+  // would bypass the model entirely, making that fallback dead code — the Apple
+  // backend would run with deterministically-extracted goals and never throw, so a
+  // missing/unavailable model could never trigger the fallback. Only the explicit
+  // deterministic/llm backends keep the deterministic pre-fill.
   const intent =
-    preference === 'apple'
+    preference === 'apple' || preference === 'auto'
       ? makeIntent(prompt)
       : enrichIntentWithExtractedGoals(makeIntent(prompt));
 
@@ -227,7 +234,10 @@ export function reasonForRun(prompt: string, options: ReasonOptions = {}): RunRe
     // disabled / ineligible / assets not ready) fall back to the deterministic
     // backend rather than failing. An explicit `apple` choice still surfaces the
     // error so the caller sees the real cause.
-    if (preference === 'auto' && error instanceof AppleModelUnavailableError) {
+    if (
+      preference === 'auto' &&
+      (error instanceof AppleModelUnavailableError || error instanceof AppleBridgeError)
+    ) {
       const det = resolveBackend('deterministic');
       const detIntent = enrichIntentWithExtractedGoals(makeIntent(prompt));
       if (options.observation) {

@@ -10,7 +10,11 @@ import {
   type ReasoningBackend,
 } from '@athena-os/reasoning';
 import { LlmReasoningBackend, type ModelClient } from '@athena-os/reasoning-backends';
-import { AppleModelClient, AppleModelUnavailableError } from '@athena-os/reasoning-backends';
+import {
+  AppleBridgeError,
+  AppleModelClient,
+  AppleModelUnavailableError,
+} from '@athena-os/reasoning-backends';
 import { iphoneRunRegistry } from './registry.js';
 import {
   makeIntent,
@@ -134,6 +138,24 @@ describe('reasonForRun (deterministic)', () => {
       });
       expect(backendId).toBe('deterministic');
       expect(result.kind).toBe('clarificationRequired');
+    } finally {
+      AppleModelClient.prototype.extractGoals = original;
+    }
+  });
+
+  it('auto still falls back for a RESOLVABLE prompt (Apple model must be consulted, not bypassed by pre-fill)', () => {
+    delete process.env.ATHENA_OPENAI_API_KEY;
+    const original = AppleModelClient.prototype.extractGoals;
+    AppleModelClient.prototype.extractGoals = () => {
+      throw new AppleBridgeError('apple-model-bridge binary missing', 'BRIDGE_MISSING');
+    };
+    try {
+      // "Open Settings" IS resolvable by the deterministic extractor; without the
+      // auto-consults-Apple change the pre-fill would bypass the model and the
+      // fallback would never fire. It must still fall back and produce a real plan.
+      const { backendId, result } = reasonForRun('Open Settings', { backend: 'auto' });
+      expect(backendId).toBe('deterministic');
+      expect(result.kind).toBe('executionPlan');
     } finally {
       AppleModelClient.prototype.extractGoals = original;
     }
